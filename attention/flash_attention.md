@@ -1,4 +1,4 @@
-# FlashAttention 笔记
+# Flash Attention
 
 ## Self-Attention
 

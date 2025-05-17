@@ -1,6 +1,8 @@
 # LLM-Grandmaster-Notes
 📚The path to LLM mastery is paved with broken embeddings and resurrected gradients.
 
+- Base
+  - lm head
 - Attention
   - self attention
   - online attention
