@@ -1,4 +1,5 @@
-# LLM-Grandmaster-Notes
+# LLM Grandmaster Notes
+
 📚The path to LLM mastery is paved with broken embeddings and resurrected gradients.
 
 - Base
@@ -9,6 +10,6 @@
   - flash attention 1 2 3
 
 - softmax
-    - stardard softmax
-    - safe softmax
+  - stardard softmax
+   - safe softmax
 

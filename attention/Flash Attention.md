@@ -3,18 +3,22 @@
 ## Self-Attention
 
 $$
-S = QK^T,(N \times N) \\
-P = softmax(S), (N \times N) \\
+S = QK^T,(N \times N)
+$$
+$$
+P = softmax(S), (N \times N)
+$$
+$$
 O = PV, (N \times d)
 $$
 
 ### Safe Softmax
 
 $$
-safe-softmax = \frac{e^{x_i -m}}{\sum_{j=1}^{N}e^{x_j-m}}
+safe\ softmax = \frac{e^{x_i -m}}{\sum_{j=1}^{N}e^{x_j-m}}
 $$
 
-计算 safe-softmax 的时候需要对 [1, N] 重复三次，需要访问 Q 和 K 三次， 并实时重新计算 x，这样会很低效，所以需要将计算进行合并。
+计算 safe-softmax 的时候需要对 `[1, N]` 重复三次，需要访问 `Q` 和 `K` 三次， 并实时重新计算 `x`，这样会很低效，所以需要将计算进行合并。
 
 现在定义 
 
@@ -41,7 +45,7 @@ $$
 
 ## flash attention 1
 
-online softmax 最多只有一个 2-pass 的算法，不存在 1-pass 算法，但是 attention 可以有 1-pass 算法。基于上述的 online softmax 可以得到一个 1-pass 的 attention 算法。
+online softmax 最多只有一个 `2-pass` 的算法，不存在 `1-pass` 算法，但是 `attention` 可以有 `1-pass` 算法。基于上述的 online softmax 可以得到一个 `1-pass`的 attention 算法。
 
 重点在第二个循环：
 
@@ -50,7 +54,7 @@ a_i = \frac{e^{x_i - m_N}}{d_N^{'}} \\
 o_i = o_{i-1} + a_i V[i,:]
 $$
 
-推导 1-pass 版本的 flash attention:
+推导 `1-pass` 版本的 flash attention:
 
 $$
 o_i^{'} = (\sum_{j=1}^i (\frac{e^{x_j - m_i}}{d_i^{'}})V[j,:]) \\
