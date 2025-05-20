@@ -2,14 +2,27 @@
 
 📚The path to LLM mastery is paved with broken embeddings and resurrected gradients.
 
-- Base
-  - lm head
-- Attention
-  - self attention
-  - online attention
-  - flash attention 1 2 3
-
+- base
+  + [x] lm head
+- attention
+  + [x] self attention
+  + [x] online attention
+  + [x] flash attention
+  + [x] flash attention 2
+  + [x] flash attention 3
+  + [ ] multi-head attention (MHA)
+  + [ ] grouped-query attention (GQA)
+  + [ ] multi-query attention (MQA)
+  + [ ] multi-head latent attention (MLA)
+  + [ ] sage attention 1
+  + [ ] sage attention 2
 - softmax
-  - stardard softmax
-   - safe softmax
+  + [x] softmax
+  + [x] safe softmax
+- norm
+  + [ ] Layer Norm
+  + [ ] RMS Norm
+- position embedding
+  + [ ] RoPE
+  + [ ] AliBi
 
