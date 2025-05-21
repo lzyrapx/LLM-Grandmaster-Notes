@@ -16,6 +16,7 @@
   + [ ] multi-head latent attention (MLA)
   + [ ] sage attention 1
   + [ ] sage attention 2
+  + [ ] paged attention
 - softmax
   + [x] softmax
   + [x] safe softmax
@@ -25,4 +26,10 @@
 - position embedding
   + [ ] RoPE
   + [ ] AliBi
+  + [ ] 2D RoPE
+  + [ ] 3D RoPE
+- quantization
+  + [ ] SmoothQuant
+  + [ ] AWQ
+  
 
