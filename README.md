@@ -16,7 +16,9 @@
   + [ ] multi-head latent attention (MLA)
   + [ ] sage attention 1
   + [ ] sage attention 2
+  + [ ] sage attention 3
   + [ ] paged attention
+  + [ ] ring attention
 - softmax
   + [x] softmax
   + [x] safe softmax
