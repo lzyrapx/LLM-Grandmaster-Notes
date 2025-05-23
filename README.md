@@ -33,5 +33,9 @@
 - quantization
   + [ ] SmoothQuant
   + [ ] AWQ
-  
+- design
+  + [ ] chunked prefill
+  + [ ] continous batching
+  + [ ] speculative decoding
+  + [ ] sliding window
 
