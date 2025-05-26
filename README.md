@@ -31,8 +31,9 @@
   + [ ] 2D RoPE
   + [ ] 3D RoPE
 - quantization
-  + [ ] SmoothQuant
+  + [ ] smooth quant
   + [ ] AWQ
+  + [ ] KIVI
 - design
   + [ ] chunked prefill
   + [ ] continous batching
