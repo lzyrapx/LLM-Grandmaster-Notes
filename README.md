@@ -19,6 +19,8 @@
   + [ ] sage attention 3
   + [ ] paged attention
   + [ ] ring attention
+  + [ ] linear attention
+  + [ ] native sparse attention (NSA)
 - softmax
   + [x] softmax
   + [x] safe softmax
