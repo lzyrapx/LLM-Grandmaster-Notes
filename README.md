@@ -20,6 +20,7 @@
   + [ ] paged attention
   + [ ] ring attention
   + [ ] linear attention
+  + [ ] lightning attention
   + [ ] native sparse attention (NSA)
 - softmax
   + [x] softmax
@@ -27,6 +28,7 @@
 - norm
   + [ ] Layer Norm
   + [ ] RMS Norm
+  + [ ] Batch Norm
 - position embedding
   + [ ] RoPE
   + [ ] AliBi
