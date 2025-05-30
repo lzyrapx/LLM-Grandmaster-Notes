@@ -34,6 +34,8 @@
   + [ ] AliBi
   + [ ] 2D RoPE
   + [ ] 3D RoPE
+  + [ ] NTK-Award RoPE
+  + [ ] Yarn
 - quantization
   + [ ] smooth quant
   + [ ] AWQ
