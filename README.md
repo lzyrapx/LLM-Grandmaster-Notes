@@ -22,6 +22,8 @@
   + [ ] linear attention
   + [ ] lightning attention
   + [ ] native sparse attention (NSA)
+  + [ ] grouped latent attention (GLA)
+  + [ ] grouped-tied attention (GTA)
 - softmax
   + [x] softmax
   + [x] safe softmax
