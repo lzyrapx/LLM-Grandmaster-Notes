@@ -288,7 +288,7 @@ https://tridao.me/publications/flash2/flash2.pdf
 
 #### 思路
 
-flash attention 通过 Tiling 和 Recomputation 技术大幅减少了 cuda kernel 对 global memory 的访问量，显著节省了内存（线性而非二次）并加快了运行时间（相比优化基线提高了 2-4 倍），并且计算结果是精确而非近似的。但 flash attention 依然远达不到优化矩阵乘法（GEMM）操作的速度，仅达到理论最大 FLOPs/s 的 25-40%。
+flash attention 通过 Tiling (分块)和 Recomputation 技术大幅减少了 cuda kernel 对 global memory 的访问量，显著节省了内存（线性而非二次）并加快了运行时间（相比优化基线提高了 2-4 倍），并且计算结果是精确而非近似的。但 flash attention 依然远达不到优化矩阵乘法（GEMM）操作的速度，仅达到理论最大 FLOPs/s 的 25-40%。
 
 这种低效是**因为 GPU 上不同线程块和 warp 之间的工作分配不理想，导致了 SM 低占用率或不必要的共享内存读写**。于是提出了 flash attention 2，通过改进并行性和工作划分来解决这些问题。
 
@@ -311,7 +311,7 @@ flash attention 使用经典的 `tiling` 即分块技术来减少内存 IO 操�
 
 ##### online softmax 技术
 
-假设只考虑注意力矩阵 $S$ 的一个行块，形式为 $[S^{(1)}\quad S^{(2)}]$，其中矩阵 $S^{(1)}, S^{(2)} \in R^{B_r\times B_c}$，$B_r$ 和 $B_c$ 分别是行块和列块的大小。目标是对这个行块进行 softmax 计算并与 $V = [V^{(1)}\quad V^{(2)}]$ 矩阵相乘，其中矩阵 $V^{(1)}, V^{(2)} \in R^{B_c \times d}$。
+假设只考虑注意力矩阵 $S$ 的一个行块，形式为 $[S^{(1)}\quad S^{(2)}]$，其中矩阵 $S^{(1)}, S^{(2)} \in R^{B_r\times B_c}$，$B_r、B_c$ 分别是行块和列块的大小。目标是对这个行块进行 softmax 计算并与 $V = [V^{(1)}\quad V^{(2)}]$ 矩阵相乘，其中矩阵 $V^{(1)}, V^{(2)} \in R^{B_c \times d}$。
 
 标准的 softmax 计算方式是：
 
@@ -338,7 +338,7 @@ $$\begin{aligned}
 
 下图展示 flash attention 1 如何使用 online softmax 实现分块处理，从而减少内存的读写操作。
 
-![alt text](../assets/fa2_online_softmax.png)
+![alt text](../assets/fa1_online_softmax.png)
 
 当键 K 被划分为两个块、值 V 也被划分为两个块时，flash attention 的前向传播执行过程的示意图就是上图这样。通过对每个块计算注意力并重新缩放输出，最终可以得到正确的结果，同时避免了对中间矩阵 S 和 P 的昂贵的内存读写。为了简化说明，**上图省略了 softmax 过程中每个元素减去行最大值的步骤**。
 
@@ -348,7 +348,43 @@ $$\begin{aligned}
 
 回顾结束。正式讲解 flash attnetion 2 的实现。
 
-##### flash attention 2 的 Algorithm, Parallelism, and Work Partitioning
+#### flash attention 2 的 Algorithm, Parallelism, and Work Partitioning
+
+对 flash attention 1 的算法进行了调整，减少非矩阵乘法的 FLOPs 数量，因为从硬件角度看，非矩阵乘法计算速度远远低于矩阵乘法。以 A100 GPU 为例，其 FP16/BF16 矩阵乘法的理论最大吞吐量为 312 TFLOPs/s，而非矩阵乘法的 FP32 吞吐量仅为 19.5 TFLOPs/s，即非矩阵乘法 FLOP 的计算成本是矩阵乘法 FLOP 的 16 倍。
+
+##### 前向传播
+
+对 flash attention 1 的 online softmax 进行了两项细微调整来减少非矩阵乘法的 FLOPs:
+
+1. 不需要通过 $\text{diag}(\ell^{(2)})^{-1}$ 来重新缩放输出更新的两项：
+
+    $$
+    \mathbf{O}^{(2)} = \text{diag}\left(\frac{\ell^{(1)}}{\ell^{(2)}}\right)^{-1} \mathbf{O}^{(1)} + \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m^{(2)}} \mathbf{V}^{(2)}.
+    $$
+
+    保留 $\tilde{\mathbf{O}}^{(2)}$ 的 "未缩放" 版本，并保留统计量 $\ell^{(2)}$：
+    $$
+    \tilde{\mathbf{O}}^{(2)} = \text{diag}(\ell^{(1)})^{-1} \tilde{\mathbf{O}}^{(1)} + e^{S^{(2)} - m^{(2)}} \mathbf{V}^{(2)}.
+    $$
+
+    只在循环结束时将最终的 $\tilde{\mathbf{O}}^{(\text{last})}$ 通过 $\text{diag}(\ell^{(\text{last})})^{-1}$ 进行缩放，也可以得到正确的输出。
+
+2. 不需要保存每一块的最大值 $m^{(j)}$ 和指数和 $\ell^{(j)}$ 用于反向传播。只需要存储 $\log \text{sum exp}$，即 $L^{(j)} = m^{(j)} + \log(\ell^{(j)})$。
+
+
+综上，flash attention 2 的 online softmax 优化后变为：
+
+$$\begin{aligned}
+    m^{(1)} &= \text{rowmax}(S^{(1)}) \in \mathbb{R}^{B_r} \\
+    \ell^{(1)} &= \text{rowsum}(e^{S^{(1)} - m^{(1)}}) \in \mathbb{R}^{B_r} \\
+    \mathbf{O}^{(1)} &= e^{S^{(1)} - m^{(1)}} \mathbf{V}^{(1)} \in \mathbb{R}^{B_r \times d} \\
+    m^{(2)} &= \max(m^{(1)}, \text{rowmax}(S^{(2)})) = m \\
+    \ell^{(2)} &= e^{m^{(1)} - m^{(2)}} \ell^{(1)} + \text{rowsum}(e^{S^{(2)} - m^{(2)}}) = \text{rowsum}(e^{S^{(1)} - m}) + \text{rowsum}(e^{S^{(2)} - m}) = \ell \\
+    \tilde{\mathbf{P}}^{(2)} &= \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m^{(2)}} \\
+    \tilde{\mathbf{O}}^{(2)} &= \text{diag}(e^{m^{(1)} - m^{(2)}}) \tilde{\mathbf{O}}^{(1)} + e^{S^{(2)} - m^{(2)}} \mathbf{V}^{(2)} \\
+    \mathbf{O}^{(2)} &= \text{diag}(\ell^{(2)})^{-1} \tilde{\mathbf{O}}^{(2)} = 0
+\end{aligned}$$
+
 
 ## flash attetion 3
 
