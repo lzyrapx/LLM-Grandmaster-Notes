@@ -23,6 +23,7 @@ $$
 ![alt text](../assets/attention.png)
 
 传统的 attention 的 cuda 实现思路是:
+
 - 要求 Q, K, V 存储在 HBM 中
 - 按块从 HBM 加载 Q，K，通过 GEMM 计算 $S = QK^T$， 将 S 写入 HBM
 - 从 HBM 读取 S，计算 $P = \mathrm{softmax}(\frac{S}{\sqrt{d}})$，将 P  写入 HBM
@@ -66,7 +67,7 @@ $$
 
 #### paper
 
-https://arxiv.org/pdf/2205.14135
+<https://arxiv.org/pdf/2205.14135>
 
 #### softmax 分块
 
@@ -279,12 +280,12 @@ torch::Tensor forward(torch::Tensor Q, torch::Tensor K, torch::Tensor V) {
     return O;  // 返回计算结果
 }
 ```
+
 ## flash attention 2
 
 #### paper
 
-https://tridao.me/publications/flash2/flash2.pdf
-
+<https://tridao.me/publications/flash2/flash2.pdf>
 
 #### 思路
 
@@ -298,7 +299,6 @@ flash attention 通过 Tiling (分块)和 Recomputation 技术大幅减少了 cu
 - forward pass/backward pass 均增加 seq_len 维度的并行，forward pass 交替 Q，K，V 循环顺序。
 - 更好的 Warp Partitioning 策略，避免 Split-K。
 
-
 #### 回顾下 flash attention 1
 
 flash attention 使用经典的 `tiling` 即分块技术来减少内存 IO 操作，**flash attention 实现步骤**：
@@ -311,7 +311,7 @@ flash attention 使用经典的 `tiling` 即分块技术来减少内存 IO 操�
 
 ##### online softmax 技术
 
-假设只考虑注意力矩阵 $S$ 的一个行块，形式为 $[S^{(1)}\quad S^{(2)}]$，其中矩阵 $S^{(1)}, S^{(2)} \in R^{B_r\times B_c}$，$B_r$ , $B_c$ 分别是行块和列块的大小。目标是对这个行块进行 softmax 计算并与 $V = [V^{(1)}\quad V^{(2)}]$ 矩阵相乘，其中矩阵 $V^{(1)}, V^{(2)} \in R^{B_c \times d}$。
+假设只考虑注意力矩阵 $S$ 的一个行块，形式为 $[S^{(1)}\quad S^{(2)}]$，其中矩阵 $S^{(1)}, S^{(2)} \in R^{B_r\times B_c}$，$B_r$ 和 $B_c$ 分别是行块和列块的大小。目标是对这个行块进行 softmax 计算并与 $V = [V^{(1)}\quad V^{(2)}]$ 矩阵相乘，其中矩阵 $V^{(1)}, V^{(2)} \in R^{B_c \times d}$。
 
 标准的 softmax 计算方式是：
 
@@ -324,7 +324,6 @@ $$\mathbf{O} = [\mathbf{P}^{(1)} \; \mathbf{P}^{(2)}] \begin{bmatrix} \mathbf{V}
 
 在线 softmax 会针对每个块计算“局部 (local)” softmax，并在最后通过重缩放得到正确的输出:
 
-
 $$\begin{aligned}
     m^{(1)} &= \text{rowmax}(S^{(1)}) \in \mathbb{R}^{B_r}, \quad
     \ell^{(1)} = \text{rowsum}(e^{S^{(1)} - m^{(1)}}) \in \mathbb{R}^{B_r} \\
@@ -333,7 +332,7 @@ $$\begin{aligned}
     m^{(2)} &= \max(m^{(1)}, \text{rowmax}(S^{(2)})) = m \\
     \ell^{(2)} &= e^{m^{(1)} - m^{(2)}} \ell^{(1)} + \text{rowsum}(e^{S^{(2)} - m^{(2)}}) = \text{rowsum}(e^{S^{(1)} - m}) + \text{rowsum}(e^{S^{(2)} - m}) = \ell \\
     \tilde{P}^{(2)} &= \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m^{(2)}} \in \mathbb{R}^{B_r \times B_c} \\
-    \mathbf{O}^{(2)} &= \text{diag}\left(\frac{\ell^{(2)}}{\ell^{(1)}}\right) \mathbf{O}^{(1)} + \tilde{P}^{(2)} \mathbf{V}^{(2)} = \text{diag}(\ell^{(2)})^{-1} e^{S^{(1)} - m} \mathbf{V}^{(1)} + \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m} \mathbf{V}^{(2)} = \mathbf{O}.
+    \mathbf{O}^{(2)} &= \text{diag}\left(\frac{\ell^{(2)}}{\ell^{(1)}}\right) \mathbf{O}^{(1)} + \tilde{P}^{(2)} \mathbf{V}^{(2)} = \text{diag}(\ell^{(2)})^{-1} e^{S^{(1)} - m} \mathbf{V}^{(1)} + \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m} \mathbf{V}^{(2)} = \mathbf{O}
 \end{aligned}$$
 
 下图展示 flash attention 1 如何使用 online softmax 实现分块处理，从而减少内存的读写操作。
@@ -359,19 +358,22 @@ $$\begin{aligned}
 1. 不需要通过 $\text{diag}(\ell^{(2)})^{-1}$ 来重新缩放输出更新的两项：
 
     $$
-        \mathbf{O}^{(2)} = \text{diag}\left(\frac{\ell^{(1)}}{\ell^{(2)}}\right)^{-1} \mathbf{O}^{(1)} + \text{diag}(\ell^{(2)})^{-1} e^{S^{(2)} - m^{(2)}} \mathbf{V}^{(2)}.
+    \begin{aligned}
+    \mathbf{O}^{(2)} & =\mathrm{diag}\left(\frac{\ell^{(1)}}{\ell^{(2)}}\right)^{-1}\mathbf{O}^{(1)}+\mathrm{diag}(\ell^{(2)})^{-1}e^{S^{(2)}-m^{(2)}}\mathbf{V}^{(2)} \\
+    \end{aligned}
     $$
 
     保留 $\tilde{\mathbf{O}}^{(2)}$ 的 "未缩放" 版本，并保留统计量 $\ell^{(2)}$：
-    
+
     $$
-        \tilde{\mathbf{O}}^{(2)} = \text{diag}(\ell^{(1)})^{-1} \tilde{\mathbf{O}}^{(1)} + e^{S^{(2)} - m^{(2)}} \mathbf{V}^{(2)}.
+    \begin{aligned}
+    \tilde{\mathbf{O}}^{(2)}=\mathrm{diag}(\ell^{(1)})^{-1}\tilde{\mathbf{O}}^{(1)}+e^{S^{(2)}-m^{(2)}}\mathbf{V}^{(2)}
+    \end{aligned}
     $$
 
     只在循环结束时将最终的 $\tilde{\mathbf{O}}^{(\text{last})}$ 通过 $\text{diag}(\ell^{(\text{last})})^{-1}$ 进行缩放，也可以得到正确的输出。
 
 2. 不需要保存每一块的最大值 $m^{(j)}$ 和指数和 $\ell^{(j)}$ 用于反向传播。只需要存储 $\log \text{sum exp}$，即 $L^{(j)} = m^{(j)} + \log(\ell^{(j)})$。
-
 
 综上，flash attention 2 的 online softmax 优化后变为：
 
@@ -386,6 +388,168 @@ $$\begin{aligned}
     \mathbf{O}^{(2)} &= \text{diag}(\ell^{(2)})^{-1} \tilde{\mathbf{O}}^{(2)} = 0
 \end{aligned}$$
 
+flash attention 2 的前向传播过程的完整算法如下图。
+![alt text](../assets/fa2_forward.png)
+
+##### 反向传播
+
+flash attention 2 的反向传播与 flash attention 1 基本相同。只做了一个小改动，softmax 中仅使用按行的 log sum exp $L$，而不是同时使用按行最大值和按行指数和。
+
+反向传播过程的完整算法如下图。
+
+![alt text](../assets/fa2_backward.png)
+
+##### 简单实现
+
+```c++
+# include <torch/types.h>
+# include <cuda.h>
+# include <cuda_runtime.h>
+
+__global__
+void forward_kernel(const float* Q, const float* K, const float* V, const int N, const int d,
+                    const int Tc, const int Tr, const int Bc, const int Br, const float softmax_scale,
+                    float* O) {
+    int tx = threadIdx.x;
+    int bx = blockIdx.x; int by = blockIdx.y;  // batch and head index
+
+    // Offset into Q,K,V,O - different for each batch and head
+    int qkv_offset = (bx * gridDim.y * N * d) + (by * N * d);  // gridDim.y = nh
+
+    // Define SRAM for Q,K,V,O,S
+    extern __shared__ float sram[];
+    int tile_size_q = Br * d;  // size of Qi, Oi
+    int tile_size_kv = Bc * d;  // size of Kj, Vj
+    float* Qi = sram;
+    float* Kj = &sram[tile_size_q];
+    float* Vj = &sram[tile_size_q + tile_size_kv];
+    float* Oi = &sram[tile_size_q + (2 * tile_size_kv)];
+    float* S = &sram[(2 * tile_size_q) + (2 * tile_size_kv)];
+
+    for(int i = 0; i < Tr; i++){
+        // Load Qi to SRAM
+        for (int x = 0; x < d; x++) {
+            Qi[(tx * d) + x] = Q[qkv_offset + (tile_size_q * i) + (tx * d) + x];
+        }
+        float row_m_prev = -INFINITY;
+        float row_l_prev = 0;
+
+        for(int j = 0; j < Tc; j++){
+            // Load Kj, Vj to SRAM
+            for(int k = tx; k < Bc; k += blockDim.x){
+                for (int x = 0; x < d; x++) {
+                    Kj[(k * d) + x] = K[qkv_offset + (tile_size_kv * j) + (k * d) + x];
+                    Vj[(k * d) + x] = V[qkv_offset + (tile_size_kv * j) + (k * d) + x];
+                }
+            }
+            __syncthreads();
+
+            // S = QK^T, row_m = rowmax(S)
+            float row_m = -INFINITY;
+            for (int y = 0; y < Bc; y++) {
+                float sum = 0;
+                for (int x = 0; x < d; x++) {
+                    sum += Qi[(tx * d) + x] * Kj[(y * d) + x];
+                }
+                sum *= softmax_scale;
+                S[(Bc * tx) + y] = sum;
+
+                if (sum > row_m)
+                    row_m = sum;
+            }
+
+            // P = exp(S - row_m), row_l = rowsum(P)
+            float row_l = 0;
+            for (int y = 0; y < Bc; y++) {
+                S[(Bc * tx) + y] = __expf(S[(Bc * tx) + y] - row_m);
+                row_l += S[(Bc * tx) + y];
+            }
+
+            // Compute new m and l
+            float row_m_new = max(row_m_prev, row_m);
+            float row_l_new = (__expf(row_m_prev - row_m_new) * row_l_prev) + (__expf(row_m - row_m_new) * row_l);
+
+            // Compute new Oi
+            for (int x = 0; x < d; x++) {
+                float pv = 0;  // Pij * Vj
+                for (int y = 0; y < Bc; y++) {
+                    pv += S[(Bc * tx) + y] * Vj[(y * d) + x];
+                }
+                Oi[(tx * d) + x] = (1 / row_l_new) \
+                    * ((row_l_prev * __expf(row_m_prev - row_m_new) * Oi[(tx * d) + x]) \
+                    + (__expf(row_m - row_m_new) * pv));
+            }
+            row_m_prev = row_m_new;
+            row_l_prev = row_l_new;
+        }
+
+        // write Oi to HBM
+        for(int x = 0; x < d; x++){
+            O[qkv_offset + (tile_size_q * i) + (tx * d) + x] = Oi[(tx * d) + x];
+        }
+        __syncthreads();
+    }
+}
+
+torch::Tensor forward(torch::Tensor Q, torch::Tensor K, torch::Tensor V) {
+    // best condition is: Bc == Br
+    const int Bc = 32; const int Br = 32;
+
+    // B: batch size / nh: number of heads / N: sequence length / d: dimension of each head
+    const int B = Q.size(0); const int nh = Q.size(1);
+    const int N = Q.size(2); const int d = Q.size(3);
+
+    const int Tc = ceil((float) N / Bc); const int Tr = ceil((float) N / Br);
+    const float softmax_scale = 1.0 / sqrt(d);
+
+    // Initialize O to HBM
+    auto O = torch::zeros_like(Q);
+    torch::Device device(torch::kCUDA);
+
+    // Calculate SRAM size needed per block
+    const int sram_size = (2 * Bc * d * sizeof(float)) + (2 * Br * d * sizeof(float)) + (2 * Bc * Br * sizeof(float));
+    dim3 grid_dim(B, nh);  // batch_size x num_heads
+    dim3 block_dim(Br);  // Bc threads per block
+
+    forward_kernel<<<grid_dim, block_dim, sram_size>>>(
+        Q.data_ptr<float>(), K.data_ptr<float>(), V.data_ptr<float>(),
+        N, d, Tc, Tr, Bc, Br, softmax_scale,
+        O.data_ptr<float>()
+    );
+    return O;
+}
+```
+
+##### 并行设计
+
+flash attention 1 通过 batch size 和 head num 进行并行处理。每个注意力头对应一个线程块，整体上会有 batch size * head num 的线程块。每个线程块被安排在 SM 上执行，例如在 A100 GPU 上有 108 个这样的 SM。当线程块数量较多时（例如 >= 80），这种调度可以高效地利用 GPU 上的计算资源。
+
+在处理长序列时（通常意味着较小的 batch size 或 head num），为了更好地利用 GPU 的多处理器，增加了在**序列长度维度(seq len)上的并行化**。这对长序列任务带来了显著的加速。
+
+**前向传播**。外层循环（在序列长度上的循环）是完全并行的，将它们调度到不同的线程块上，这些线程块之间不需要通信。像 flash attention 1 中那样在批次维度(batch size)和头的数量维度(head num)上并行化。序列长度上的并行化会提高占用率（GPU 资源的使用率），当批次大小(batch size)和头的数量(head num)较小时，这种并行化会带来加速。
+
+flash attention 2 的外层循环在行块上，内层循环在列块上，这与原始 flash attention 1 论文中相反的顺序。
+
+**反向传播**。唯一需要在不同列块之间共享计算的部分是更新 $dQ$ 的过程。需要从 HBM 中加载 $dQ_i$ 到 SRAM，在片上更新 $dQ_i ← dQ_i + dS^{(j)}_i K_j$，并将其写回 HBM。因此，也在序列长度维度上并行化，并为每个反向传播的列块分配一个线程块。使用原子加法来协调不同线程块之间的 $dQ$ 更新。
+
+**并行化方案如下图**。在前向传播过程中（左侧），并行化了工作线程（线程块），每个线程处理注意力矩阵的一部分行。在反向传播过程中（右侧），每个线程负责处理注意力矩阵的一部分列。
+
+![alt text](../assets/fa2_parallelism.png)
+
+#### 不同 warp 之间的任务划分 (work partitioning) 
+
+上面如何调度线程块，但即使在每个线程块内部，仍然需要决定如何在不同的 `warps` 之间划分任务。通常情况下，每个线程块会使用 $4$ 或 $8$ 个 `warp`，任务划分如下图所示。
+
+![alt text](../assets/fa2_workpartitioning.png)
+
+
+**前向传播**。在每个块中，flash attention 1 将 K 和 V 分配给 4 个 warps，同时保持 Q 对所有 warps 都可访问。每个 warp 计算 $QK^T$ 的一部分，随后需要与 V 的一部分相乘，并通过通信汇总结果。这种方案被称为 “Split-K” 方案。但是，这种方式效率不高，因为所有 warp 都需要将中间结果写入共享内存，进行同步后再汇总，这些共享内存的读写操作拖慢了前向传播的速度。
+
+flash attention 2 优化这一点，改为将 Q 分配给 4 个 warp，同时保持 K 和 V 对所有 warps 可访问。每个 warp 在计算 $QK^T$ 的一部分后，直接与 $V$ 的共享部分相乘，得到最终输出。这样无需 warps 之间的通信，大大减少了共享内存的读写操作，从而提升速度。
+
+**反向传播**。将 warps 分区以避免 “Split-K” 方案。不过，由于 $Q、K、V、O、dO、dQ、dK、dV$ 等输入和梯度之间的复杂依赖关系，仍然需要一定的同步操作。尽管如此，避免“split-K” 方案可以减少共享内存的读写操作，从而带来加速效果。
+
+**调整块大小**。增大块大小通常可以减少共享内存的加载和存储操作，但也会增加所需寄存器的数量以及共享内存的总使用量。一旦块大小超过一定阈值，寄存器溢出会导致显著的性能下降，或者所需的共享内存量超过 GPU 的可用空间，导致内核无法执行。通常需要根据头维度 $d$ 和设备的共享内存大小，选择 {64, 128} × {64, 128} 大小的块。可以针对每个头维度手动调优块大小，因为基本上只有 4 种块大小可供选择。
 
 ## flash attetion 3
 
