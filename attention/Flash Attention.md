@@ -552,7 +552,30 @@ flash attention 2 优化这一点，改为将 Q 分配给 4 个 warp，同时保
 
 **调整块大小**。增大块大小通常可以减少共享内存的加载和存储操作，但也会增加所需寄存器的数量以及共享内存的总使用量。一旦块大小超过一定阈值，寄存器溢出会导致显著的性能下降，或者所需的共享内存量超过 GPU 的可用空间，导致内核无法执行。通常需要根据头维度 $d$ 和设备的共享内存大小，选择 {64, 128} × {64, 128} 大小的块。可以针对每个头维度手动调优块大小，因为基本上只有 4 种块大小可供选择。
 
-## flash attetion 3
+## flash attention 3
 
-主要做了针对 hopper 架构的优化：
-- 利用 Tensor Core、TMA 和 Warp-Specialization 等特性
+#### paper
+
+https://arxiv.org/pdf/2407.08608
+
+#### 思路
+
+flash attention 2 虽然减少了非矩阵乘法的计算量，提高了运行速度，但是它在 hopper 架构上并未充分利用该硬件的功能，导致在 H100 GPU 上的利用率仅为 35%。因此提出了 flashattention-3，主要通过 3 项优化策略来提升 Hopper GPU 上的注意力计算性能：
+
+1. **生产者-消费者异步机制**：提出了一种基于 warp Specialization 的流水线方案，将数据的生产者和消费者分配到不同的 warp 中，利用 Tensor Cores 的异步执行和数据传输能力，从而延长算法隐藏内存访问延迟和指令调度的时间。
+2. **在异步块级 GEMM 操作下隐藏 softmax**：将 softmax 中较低吞吐量的运算（如乘加和指数运算）与异步 WGMMA 指令（用于矩阵乘法）进行重叠处理。在这一过程中，重新设计了 flash attention 2 的算法，用来减少 softmax 和矩阵乘法之间的依赖。例如，在两阶段算法中，softmax 操作一块分数矩阵时，WGMMA 异步执行下一块的计算。
+3. **硬件加速的低精度 GEMM**：调整了前向计算算法，能够利用 FP8 Tensor Cores 进行矩阵乘法，使实际测得的 TFLOPs/s 几乎翻倍。这要求在内存布局上解决 FP32 累加器和 FP8 操作数矩阵块的不同要求。同时使用块量化和不相干处理技术来降低精度损失的影响。
+4. TMA
+
+
+## flash decoding
+
+#### blog
+
+https://crfm.stanford.edu/2023/10/12/flashdecoding.html
+
+## flash decoding++
+
+#### paper
+
+https://arxiv.org/pdf/2311.01282
