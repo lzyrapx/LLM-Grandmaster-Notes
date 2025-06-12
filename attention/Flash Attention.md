@@ -565,14 +565,35 @@ flash attention 2 虽然减少了非矩阵乘法的计算量，提高了运行�
 1. **生产者-消费者异步机制**：提出了一种基于 warp Specialization 的流水线方案，将数据的生产者和消费者分配到不同的 warp 中，利用 Tensor Cores 的异步执行和数据传输能力，从而延长算法隐藏内存访问延迟和指令调度的时间。
 2. **在异步块级 GEMM 操作下隐藏 softmax**：将 softmax 中较低吞吐量的运算（如乘加和指数运算）与异步 WGMMA 指令（用于矩阵乘法）进行重叠处理。在这一过程中，重新设计了 flash attention 2 的算法，用来减少 softmax 和矩阵乘法之间的依赖。例如，在两阶段算法中，softmax 操作一块分数矩阵时，WGMMA 异步执行下一块的计算。
 3. **硬件加速的低精度 GEMM**：调整了前向计算算法，能够利用 FP8 Tensor Cores 进行矩阵乘法，使实际测得的 TFLOPs/s 几乎翻倍。这要求在内存布局上解决 FP32 累加器和 FP8 操作数矩阵块的不同要求。同时使用块量化和不相干处理技术来降低精度损失的影响。
-4. TMA
-
+4. 使用 TMA 特性。
 
 ## flash decoding
 
 #### blog
 
 https://crfm.stanford.edu/2023/10/12/flashdecoding.html
+
+#### 思路 
+在 decoding 过程中，每个新生成的 token 需要关注所有之前生成的 token，来计算：`softmax(queries @ keys.transpose) @ values`。
+
+在训练时，flash attention（v1 和 v2）已经对这一操作进行了优化，主要瓶颈在于读取和写入中间结果所需的内存带宽（例如 Q @ K^T）。但是，这些优化无法直接应用于推理过程中，因为推理中的瓶颈和训练不同。在训练中，flash attention（v1 和 v2）在 batch size 和查询长度维度上进行了并行化处理（这样会导致在 decoding 过程中无法充分利用 GPU 的全部计算资源，因为 batch size 只有 1 ）。
+
+因为**在 decode 阶段中，查询的长度通常是 1**，这意味着如果 batch size 小于 GPU 上流处理器（SM）的数量（A100 GPU 上有 108 个 SM），那么该操作只能使用一小部分 GPU。尤其是在使用较长的上下文时，由于需要更小的批量大小以适应 GPU 内存，batch size 为 1 的情况下，flash attention 3 的 GPU 利用率不到 1%。
+
+因此，flash decoding 基于 flash attention v1 和 v2 ，在 `batch size` 和 `query length` 并行的基础上增加了一个新的并行化维度：`keys/values` 的序列长度。和 flash attention 3 一样，它将非常少量的额外数据存储在全局内存中，但只要上下文长度足够长，即使批次大小很小，也能充分利用 GPU。**所以，flash attention 3 支持了 flash decoding，它是 flash attention 3 的一个重要特性**。
+
+flash decoding 的工作流程分为三个步骤：
+1. 首先，将 `keys/values` 拆分成更小的块。
+2. 然后，使用 flash attention 3 并行计算**查询与每个拆分块的注意力值**，同时为每行和每个块记录一个额外的标量：注意力值的 log-sum-exp。
+3. 最后，通过对所有拆分块进行归约，结合 log-sum-exp 调整各个块的贡献，计算出最终的结果。
+
+上述步骤之所以可行，是因为**注意力/softmax 可以迭代计算**（flash attention 2）。在 flash decoding 中，它在两个层次上使用：在拆分内（类似于 flash attention 2）和跨拆分来执行最终归约。
+
+实际上，步骤 (1) 不涉及任何 GPU 操作，因为 `keys/values` 块是完整的 `keys/values` 张量的视图。接着就是两个独立的内核分别执行步骤 (2) 和 (3)。
+
+#### 总结
+
+flash decoding 主要是针对 llm decode 阶段的推理加速，在 batch_size 较小和序列长度较大时有着明显的加速效果，且性能对序列长度的增加并不敏感。**flash attention 3 支持了 flash decoding，它是 flash attention 3 的一个重要特性**。
 
 ## flash decoding++
 
