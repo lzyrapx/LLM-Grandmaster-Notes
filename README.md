@@ -10,6 +10,8 @@
   + [x] flash attention
   + [x] flash attention 2
   + [x] flash attention 3
+  + [x] flash decoding
+  + [x] flash decoding++
   + [ ] multi-head attention (MHA)
   + [ ] grouped-query attention (GQA)
   + [ ] multi-query attention (MQA)
@@ -27,6 +29,14 @@
 - softmax
   + [x] softmax
   + [x] safe softmax
+  + [x] online softmax
+- kv cache optimization
+  + [] kv cache
+  + [] sparse
+  + [] quantization
+  + [] allocator
+  + [] window
+  + [] share
 - norm
   + [ ] Layer Norm
   + [ ] RMS Norm
@@ -47,4 +57,5 @@
   + [ ] continous batching
   + [ ] speculative decoding
   + [ ] sliding window
+- reinforcement learning
 
