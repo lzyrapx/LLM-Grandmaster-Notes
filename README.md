@@ -4,6 +4,7 @@
 
 - base
   + [x] lm head
+  + [ ] kv cache
 - attention
   + [x] self attention
   + [x] online attention
@@ -31,12 +32,11 @@
   + [x] safe softmax
   + [x] online softmax
 - kv cache optimization
-  + [] kv cache
-  + [] sparse
-  + [] quantization
-  + [] allocator
-  + [] window
-  + [] share
+  + [ ] sparse
+  + [ ] quantization
+  + [ ] allocator
+  + [ ] window
+  + [ ] share
 - norm
   + [ ] Layer Norm
   + [ ] RMS Norm
