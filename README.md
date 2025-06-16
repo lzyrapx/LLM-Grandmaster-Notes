@@ -17,6 +17,7 @@
   + [ ] grouped-query attention (GQA)
   + [ ] multi-query attention (MQA)
   + [ ] multi-head latent attention (MLA)
+  + [ ] multi-token attention (MTA)
   + [ ] sage attention 1
   + [ ] sage attention 2
   + [ ] sage attention 3
@@ -57,5 +58,6 @@
   + [ ] continous batching
   + [ ] speculative decoding
   + [ ] sliding window
+  + [ ] Multi-Token Prediction (MTP)
 - reinforcement learning
 
