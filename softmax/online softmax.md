@@ -42,7 +42,7 @@ $$
 
 定义：
 
-$$\max_{j}=\max\left\{x_{1}, x_{2},\ldots, x_{j}\right\}$，即前  $j$  个元素的最大值。
+$\max_{j}=\max\left\{x_{1}, x_{2},\ldots, x_{j}\right\}$，即前  $j$  个元素的最大值。
 
 **要证明**：
 
@@ -73,7 +73,7 @@ $$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}\text{。}$$
 
 $$d_j=d_{j-1}\times1+e^{x_j-\max_{j}}=d_{j-1}+e^{x_j-\max_{j}}$$
 
-由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$。
+由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$
 
 由于 $\max_{j}=\max_{j-1}$，有 $\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}$
 
@@ -83,13 +83,43 @@ $$d_j=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}+e^{x_j-\max_{j}}=\sum_{k=1}^je^{x_k-\max_
 
 已证明。
 
-情况 2: $\max_{j}=x_j$，即 $x_j>\max_{j-1}$
+**情况 2**: 当 $\max_{j}=x_j$，即 $x_j>\max_{j-1}$
 
-此时，$\max_{j} = x_{j}$，且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$（注意：$\max_{j-1} - x_{j} < 0$，但指数计算仍有效）。
+此时，$\max_{j}=x_{j}$，且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$（注意：$\max_{j-1}-x_{j}<0$，但指数计算仍有效）。
 
 递推公式为：
 
-$d_{j} = d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}} = d_{j-1} \times e^{\max_{j-1} - x_{j}} + e^{x_{j} - x_{j}}=d_{j-1}\times e^{\max_{j-1} - x_{j}} + 1$
+$$d_{j} = d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}} = d_{j-1} \times e^{\max_{j-1} - x_{j}} + e^{x_{j} - x_{j}}=d_{j-1}\times e^{\max_{j-1} - x_{j}} + 1$$
+
+由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$
+
+代入：
+
+$$d_j=\left(\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}\right)\times e^{\max_{j-1}-x_j}+1=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}\cdot e^{\max_{j-1}-x_j}+1$$
+
+简化指数部分：
+
+$$e^{x_k-\max_{j-1}}\cdot e^{\max_{j-1}-x_j}=e^{(x_k-\max_{j-1})+(\max_{j-1}-x_j)}=e^{x_k-x_j}$$
+
+所以：
+
+$$d_j=\sum_{k=1}^{j-1}e^{x_k-x_j}+1$$
+
+目标：
+
+$$d_j=\sum_{k=1}^je^{x_k-\max_{j}}=\sum_{k=1}^je^{x_k-x_j}$$
+
+因为 $\max_{j}=x_j$ 且：
+
+$$\sum_{k=1}^je^{x_k-x_j}=e^{x_j-x_j}+\sum_{k=1}^{j-1}e^{x_k-x_j}=1+\sum_{k=1}^{j-1}e^{x_k-x_j}$$
+
+这与递推公式结果一致：
+
+$$d_j=\sum_{k=1}^{j-1}e^{x_k-x_j}+1$$
+
+在两种情况下，递推公式计算的 $d_j$ 都等于 $\sum_{k=1}^je^{x_k-\max_{j}}$。
+
+综上，由数学归纳法，对于所有 $j >= 1$公式成立。
 
 伪代码：
 
