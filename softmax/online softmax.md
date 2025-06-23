@@ -42,13 +42,17 @@ $$
 
 定义：
 
-$\max_{j}=\max\{x_{1}, x_{2},\ldots, x_{j}\}$，即前  $j$  个元素的最大值。
+$\max_{j}=\max\{{x_{1}, x_{2},\ldots, x_{j}\}}$，即前  $j$  个元素的最大值。
 
 **要证明**：
 
 $$d_{j}=\sum_{k=1}^{j}e^{x_{k}-\max_{j}}=d_{j-1}\times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}}$$
 
-递推公式：对于 $j \geq 2$ ，有 $d_{j}=d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}}$，且基础情况 $j=1$ 时，$d_{1}=e^{x_{1}-\max_{1}}=e^{x_{1}-x_{1}}=e^{0}=1$ （因为 $\max_{1}=x_{1}$）。
+递推公式：
+
+对于 $j \geq 2$ ，有 $d_{j}=d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}}$
+
+当基础情况 $j=1$ 时，$d_{1}=e^{x_1-\max_1}=e^{x_1-x_1}=e^0=1$ （因为 $\max_{1}=x_{1}$）。
 
 1. 基础情况 ($j = 1$)
 - 当 $j=1$ ：
@@ -62,18 +66,18 @@ $$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$$
 
 - 需要证明：对于 $j$ ,有 $d_j=\sum_{k=1}^je^{x_k-\max_{j}}$, 且使用递推公式 $d_j=d_{j-1}\times e^{\max_{j-1}-\max_{j}}+e^{x_j-\max_{j}}$ 计算后等价于目标。
 
-注意到 $\max_{j}=\max\{\max_{j-1},x_j\}$，因此有两种可能情况：要么 $\max_{j}=\max_{j-1}$ (当$x_j\leq\max_{j-1})$，要么 $\max_j=x_j$ (当 $x_j>\max_{j-1}$ )。需要分情况证明。
+注意到 $\max_{j}=\max\{\max_{j-1},x_j\}$，因此有两种可能情况：要么 $\max_{j}=\max_{j-1}$ (当$x_{j}\leq\max_{j-1})$，要么 $\max_j=x_j$ (当 $x_j>\max_{j-1}$ )。需要分情况证明。
 
 **情况 1**：
 
-当 $\max_{j}=\max_{j-1}$，(即 $x_j\leq\max_{j-1}$)
+当 $\max_{j}=\max_{j-1}$，(即 $x_{j}\leq\max_{j-1}$)
 
-此时，$\max_{j-1}-\max_{j}=0$，所以 $e^{\max_{j-1}-\max_{j}}=e^0=1$。
+此时，$\max_{j-1} - \max_{j}=0$，所以 $e^{\max_{j-1}-\max_{j}}=e^0=1$。
 递推公式简化为：
 
-$$d_j=d_{j-1}\times1+e^{x_j-\max_{j}}=d_{j-1}+e^{x_j-\max_{j}}$$
+$$d_j=d_{j-1}\times1+e^{x_{j}-\max_{j}}=d_{j-1}+e^{x_{j}-\max_{j}}$$
 
-由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$
+由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_{k}-\max_{j-1}}$
 
 由于 $\max_{j}=\max_{j-1}$，有 $\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}$
 
@@ -91,7 +95,7 @@ $$d_j=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}+e^{x_j-\max_{j}}=\sum_{k=1}^je^{x_k-\max_
 
 $$d_{j} = d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}} = d_{j-1} \times e^{\max_{j-1} - x_{j}} + e^{x_{j} - x_{j}}=d_{j-1}\times e^{\max_{j-1} - x_{j}} + 1$$
 
-由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$
+由归纳假设，$d_{j-1}=\sum_{k=1}^{j-1} e^{x_{k}-\max_{j-1}}$
 
 代入：
 
