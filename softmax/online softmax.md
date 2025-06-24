@@ -69,8 +69,8 @@ $$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$$
 - 需要证明：对于 $j$ ,有 $d_j=\sum_{k=1}^je^{x_k-\max_{j}}$, 且使用递推公式 $d_j=d_{j-1}\times e^{\max_{j-1}-\max_{j}}+e^{x_j-\max_{j}}$ 计算后等价于目标。
 
 注意到 $\max_{j}=\max(\max_{j-1},x_{j})$，因此有两种可能情况：
-- 要么 $\max_{j}=\max_{j-1}$ (当$x_{j}\leq\max_{j-1}$)
-- 要么 $\max_j=x_j$ (当 $x_j>\max_{j-1}$ )。
+- 要么 $\max_{j}=\max_{j-1}$ (当 $x_j <= \max_{j-1}$)
+- 要么 $\max_j=x_j$ (当 $x_j > \max_{j-1}$ )。
 
 因此，需要分情况证明。
 
@@ -98,17 +98,15 @@ $$d_j=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}+e^{x_j-\max_{j}}=\sum_{k=1}^je^{x_k-\max_
 
 **情况 2**: 当 $\max_{j}=x_j$，即 $x_j>\max_{j-1}$
 
-此时，$\max_{j}=x_j$
+因为：
 
-且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$
-
-注意：$\max_{j-1}-x_j<0$，但指数计算仍有效。
+$$\max_{j}=x_j \text{且} \max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$$
 
 所以递推公式为：
 
 $$d_{j} = d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}} = d_{j-1} \times e^{\max_{j-1} - x_{j}} + e^{x_{j} - x_{j}}=d_{j-1}\times e^{\max_{j-1} - x_{j}} + 1$$
 
-由归纳假设，
+由归纳假设：
 
 $$d_{j-1}=\sum_{k=1}^{j-1} e^{x_{k}-\max_{j-1}}$$
 
