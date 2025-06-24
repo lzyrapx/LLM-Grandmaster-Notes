@@ -167,8 +167,45 @@ for i in range(D):
 1. 先对整个序列过一遍，同时拿到整个序列的全局最大值和指数和
 2. 再对整个序列过一遍，进行归一化
 
-由下面的公式可知，要得到 $O_{ij}$，即使使用 Online Softmax 的话，依然需要遍历两遍 $Q$ 的第 $i$ 行，才能和 $V$ 矩阵的第 $j$ 列运算得到结果，那有没有可能在遍历 $Q$ 的第 $i$ 行的同时就计算出 $Q_{ij}$ 呢？这个是可以的，这也是 Flash Attention 要解决的问题。
+由下面的公式可知，要得到 $O_{ij}$，即使使用 Online Softmax 的话，依然需要遍历两遍 $Q$ 的第 $i$ 行，才能和 $V$ 矩阵的第 $j$ 列运算得到结果，那有没有可能在遍历 $Q$ 的第 $i$ 行的同时就计算出 $Q_{ij}$ 呢？这个是可以的，这也是 Flash Attention 要解决的问题。具体可以自行学习。
+
 
 $$
-O_{ij}=P_{i,:}V_{:,j}=\mathrm{softmax}(S)_{i,:}V_{:,j}=\mathrm{softmax}(S_{i,:})V_{:,j}=\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
+O_{ij} =P_{i,:}V_{:,j}
 $$
+$$
+=\mathrm{softmax}(S)_{i,:}V_{:,j}
+$$
+$$
+=\mathrm{softmax}(S_{i,:})V_{:,j}
+$$
+$$
+=\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
+$$
+
+为什么还需要遍历两遍 $Q$ 的第 $i$ 行？
+
+$$
+\mathrm{softmax}(S_i)_k=\frac{e^{S_{i,k}}}{\sum_le^{S_{i,l}}}
+$$
+
+- 第一次遍历：计算分母的归一化项。
+- 第二次遍历：使用归一化项计算。
+
+伪代码：
+```python
+# Online Softmax 计算 P_i（但未解决点积问题）
+d = -inf  # 运行最大值
+exp_sum = 0  # 运行指数和
+for k in range(seq_len):
+    S_ik = dot(Q_i, K[:,k])  # 计算 S_{i,k}，需要访问 Q_i
+    d_new = max(d, S_ik)
+    exp_sum = exp_sum * exp(d - d_new) + exp(S_ik - d_new)  # 更新指数和
+    d = d_new
+# 第二次遍历：计算归一化 softmax 值 P_{i,k} 和点积（如果需要）
+O_ij = 0
+for k in range(seq_len):
+    S_ik = dot(Q_i, K[:,k])  # 需要重新计算 S_{i,k}，访问 Q_i 第二遍
+    P_ik = exp(S_ik - d) / exp_sum
+    O_ij += P_ik * V[k,j]
+```
