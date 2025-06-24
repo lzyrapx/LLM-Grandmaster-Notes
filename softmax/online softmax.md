@@ -183,9 +183,7 @@ $$
 
 为什么还需要遍历两遍 $Q$ 的第 $i$ 行？
 
-$$
-{softmax(S_i)}_{k}=\frac{e^{S_{i,k}}}{\sum_le^{S_{i,l}}}
-$$
+![online_softmax](../assets/softmax.png)
 
 - 第一次遍历：计算分母的归一化项。
 - 第二次遍历：使用归一化项计算。
