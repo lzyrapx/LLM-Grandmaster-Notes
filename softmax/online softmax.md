@@ -174,10 +174,6 @@ O_{ij}=P_{i,:} * V_{:,j}
 $$
 
 $$
-=softmax(S)_{i,:} * V_{:,j}
-$$
-
-$$
 =softmax(S_{i,:}) * V_{:,j}
 $$
 
@@ -188,7 +184,7 @@ $$
 为什么还需要遍历两遍 $Q$ 的第 $i$ 行？
 
 $$
-softmax(S_i)_k=\frac{e^{S_{i,k}}}{\sum_le^{S_{i,l}}}
+{softmax(S_i)}_{k}=\frac{e^{S_{i,k}}}{\sum_le^{S_{i,l}}}
 $$
 
 - 第一次遍历：计算分母的归一化项。
