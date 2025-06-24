@@ -170,8 +170,5 @@ for i in range(D):
 由下面的公式可知，要得到 $O_{ij}$，即使使用 Online Softmax 的话，依然需要遍历两遍 $Q$ 的第 $i$ 行，才能和 $V$ 矩阵的第 $j$ 列运算得到结果，那有没有可能在遍历 $Q$ 的第 $i$ 行的同时就计算出 $Q_{ij}$ 呢？这个是可以的，这也是 Flash Attention 要解决的问题。
 
 $$
-O_{ij} =P_{i,:}V_{:,j} \\
-=\mathrm{softmax}(S)_{i,:}V_{:,j} \\
-=\mathrm{softmax}(S_{i,:})V_{:,j} \\
-=\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
+O_{ij}=P_{i,:}V_{:,j}=\mathrm{softmax}(S)_{i,:}V_{:,j}=\mathrm{softmax}(S_{i,:})V_{:,j}=\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
 $$
