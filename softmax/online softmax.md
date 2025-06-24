@@ -98,11 +98,11 @@ $$d_j=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}+e^{x_j-\max_{j}}=\sum_{k=1}^je^{x_k-\max_
 
 **情况 2**: 当 $\max_{j}=x_j$，即 $x_j>\max_{j-1}$
 
-此时，$\max_{j}=x_{j}$.
+此时，$\max_{j}=x_j$
 
 且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$
 
-（注意：$\max_{j-1}-x_{j}<0$，但指数计算仍有效）。
+注意：$\max_{j-1}-x_j<0$，但指数计算仍有效。
 
 所以递推公式为：
 
@@ -172,10 +172,8 @@ for i in range(D):
 由下面的公式可知，要得到 $O_{ij}$，即使使用 Online Softmax 的话，依然需要遍历两遍 $Q$ 的第 $i$ 行，才能和 $V$ 矩阵的第 $j$ 列运算得到结果，那有没有可能在遍历 $Q$ 的第 $i$ 行的同时就计算出 $Q_{ij}$ 呢？这个是可以的，这也是 Flash Attention 要解决的问题。
 
 $$
-\begin{aligned}
-O_{ij} & =P_{i,:}V_{:,j} \\
- & =\mathrm{softmax}(S)_{i,:}V_{:,j} \\
- & =\mathrm{softmax}(S_{i,:})V_{:,j} \\
- & =\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
-\end{aligned}
+O_{ij} =P_{i,:}V_{:,j} \\
+=\mathrm{softmax}(S)_{i,:}V_{:,j} \\
+=\mathrm{softmax}(S_{i,:})V_{:,j} \\
+=\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
 $$
