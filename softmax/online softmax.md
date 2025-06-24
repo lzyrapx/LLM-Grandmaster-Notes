@@ -42,7 +42,7 @@ $$
 
 定义：
 
-$\max_{j}=\max\{{x_{1}, x_{2},\ldots, x_{j}\}}$，即前  $j$  个元素的最大值。
+$\max_{j}=\max(x_{1}, x_{2},\ldots, x_{j})$，即前  $j$  个元素的最大值。
 
 **要证明**：
 
@@ -68,7 +68,11 @@ $$d_{j-1}=\sum_{k=1}^{j-1}e^{x_k-\max_{j-1}}$$
 
 - 需要证明：对于 $j$ ,有 $d_j=\sum_{k=1}^je^{x_k-\max_{j}}$, 且使用递推公式 $d_j=d_{j-1}\times e^{\max_{j-1}-\max_{j}}+e^{x_j-\max_{j}}$ 计算后等价于目标。
 
-注意到 $\max_{j}=\max\{\max_{j-1},x_j\}$，因此有两种可能情况：要么 $\max_{j}=\max_{j-1}$ (当$x_{j}\leq\max_{j-1})$，要么 $\max_j=x_j$ (当 $x_j>\max_{j-1}$ )。需要分情况证明。
+注意到 $\max_{j}=\max(\max_{j-1},x_{j})$，因此有两种可能情况：
+- 要么 $\max_{j}=\max_{j-1}$ (当$x_{j}\leq\max_{j-1}$)
+- 要么 $\max_j=x_j$ (当 $x_j>\max_{j-1}$ )。
+
+因此，需要分情况证明。
 
 **情况 1**：
 
@@ -94,9 +98,13 @@ $$d_j=\sum_{k=1}^{j-1}e^{x_k-\max_{j}}+e^{x_j-\max_{j}}=\sum_{k=1}^je^{x_k-\max_
 
 **情况 2**: 当 $\max_{j}=x_j$，即 $x_j>\max_{j-1}$
 
-此时，$\max_{j}=x_{j}$，且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$（注意：$\max_{j-1}-x_{j}<0$，但指数计算仍有效）。
+此时，$\max_{j}=x_{j}$.
 
-递推公式为：
+且 $\max_{j-1}-\max_{j}=\max_{j-1}-x_{j}$
+
+（注意：$\max_{j-1}-x_{j}<0$，但指数计算仍有效）。
+
+所以递推公式为：
 
 $$d_{j} = d_{j-1} \times e^{\max_{j-1}-\max_{j}}+e^{x_{j}-\max_{j}} = d_{j-1} \times e^{\max_{j-1} - x_{j}} + e^{x_{j} - x_{j}}=d_{j-1}\times e^{\max_{j-1} - x_{j}} + 1$$
 
@@ -160,3 +168,14 @@ for i in range(D):
 
 1. 先对整个序列过一遍，同时拿到整个序列的全局最大值和指数和
 2. 再对整个序列过一遍，进行归一化
+
+由下面的公式可知，要得到 $O_{ij}$，即使使用 Online Softmax 的话，依然需要遍历两遍 $Q$ 的第 $i$ 行，才能和 $V$ 矩阵的第 $j$ 列运算得到结果，那有没有可能在遍历 $Q$ 的第 $i$ 行的同时就计算出 $Q_{ij}$ 呢？这个是可以的，这也是 Flash Attention 要解决的问题。
+
+$$
+\begin{aligned}
+O_{ij} & =P_{i,:}V_{:,j} \\
+ & =\mathrm{softmax}(S)_{i,:}V_{:,j} \\
+ & =\mathrm{softmax}(S_{i,:})V_{:,j} \\
+ & =\mathrm{softmax}(Q_{i,:}K^T)V_{:,j}
+\end{aligned}
+$$
