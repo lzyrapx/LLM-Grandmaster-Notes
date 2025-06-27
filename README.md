@@ -53,6 +53,7 @@
   + [ ] smooth quant
   + [ ] AWQ
   + [ ] KIVI
+  + [ ] GPTQ
 - design
   + [ ] chunked prefill
   + [ ] continous batching
@@ -60,4 +61,7 @@
   + [ ] sliding window
   + [ ] Multi-Token Prediction (MTP)
 - reinforcement learning
+  + [ ] PPO
+  + [ ] GRPO
+  + [ ] DAPO
 
