@@ -64,4 +64,5 @@
   + [ ] PPO
   + [ ] GRPO
   + [ ] DAPO
+  + [ ] GPG
 
