@@ -67,7 +67,9 @@ $$
 
 #### paper
 
-<https://arxiv.org/pdf/2205.14135>
+[FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness](https://arxiv.org/pdf/2205.14135)
+
+[From Online Softmax to FlashAttention](https://courses.cs.washington.edu/courses/cse599m/23sp/notes/flashattn.pdf)
 
 #### softmax 分块
 
