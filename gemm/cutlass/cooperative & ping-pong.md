@@ -1,5 +1,4 @@
-
-### Cooperative 和 Ping-pong 定义
+## Cooperative 和 Ping-pong 定义
 
 Cooperative 和 Ping-pong 都是 Warp Specialization Persistent Kernel 的调度策略。
 
@@ -37,10 +36,52 @@ struct PingpongConfig {
 
 显然，Ping-pong 调度策略的 Output Tile 仅有 Cooperative 调度策略的一半大小。
 
-在 NVIDIA GPU 上，对于 GEMM 类的 Compute-bound 算子，性能优化的目标通常是需要程序可以持续地、饱和地利用所有 SM Core 上的 Tensor Core 运算单元。在 CUTLASS GEMM Kernel 中，Mainloop 阶段主要利用的是 Tensor Core 运算单元，而 Epilogue 阶段则是完成一些额外的计算操作（例如实施激活函数）并将结果写回 Global Memory，这些操作只依赖于 Cuda Core，不依赖于 Tensor Core。因此，结合性能优化的目标，我们希望在整个 Kernel 的生命周期中尽可能的使用 Mainloop 掩盖 Epilogue 的开销，避免将 Epilogue 直接暴露在 Timeline 上，以最大化 Tensor Core 的利用率。
+在 NVIDIA GPU 上，对于 GEMM 类的 Compute-bound 算子，性能优化的目标通常是**需要程序可以持续地、饱和地利用所有 SM Core 上的 Tensor Core 运算单元**。在 CUTLASS GEMM Kernel 中，Mainloop 阶段主要利用的是 Tensor Core 运算单元，而 Epilogue 阶段则是完成一些额外的计算操作（例如实施激活函数）并将结果写回 Global Memory，这些操作只依赖于 Cuda Core，不依赖于 Tensor Core。因此，结合性能优化的目标，希望在整个 Kernel 的生命周期中尽可能的使用 Mainloop 掩盖 Epilogue 的开销，避免将 Epilogue 直接暴露在 Timeline 上，以最大化 Tensor Core 的利用率。
 
 
-### 总结
+视频：[CUTLASS 2.x 与 3.x 的入门使用](https://www.bilibili.com/video/BV1XH4y1c7JZ?spm_id_from=333.788.videopod.sections&vd_source=3187e54ee4327cdd9b00a232b8ccb71c)
+
+![cooperative](../../assets/cooperative_gemm.png)
+
+从上图的 cooperative 示例可以看到，灰色部分代表 Epilogue， 可以看到使用 Cooperative 调度策略时，Epilogue 部分是暴露在 Timeline 上的。
+
+相比之下，使用 Ping-pong 调度策略时，Epilogue 部分则是完全被 Mainloop 部分 Overlap 掉了，如下图所示：
+
+![ping-pong](../../assets/ping-pong_gemm.png)
+
+上面的两张图片只是理想情况下的简单示例。接下来看一看真实 Kernel 的 Timeline 是否和上图具有一致的现象，此时我们需要利用 nc u的一个新特性——[PM Sampling](https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#pm-sampling)。
+
+按照如下配置分别运行使用 Cooperative 调度策略和 Ping-pong 调度策略的 FP8 Blockwise Scaling Grouped GEMM：
+
+```bash
+num_groups=256
+M=128
+N=512
+K=7168
+```
+
+观察 Cooperative Kernel 的 PM Sampling Timeline：
+
+![Cooperative_PM_Sampling](../../assets/Cooperative_PM_Sampling.png)
+
+可以看到，Tensor Pipe Throughput 出现了非常明显的周期性下降的现象，在 Timeline 上形成了一些“缺口”。如果我们仔细的去数一数这些“缺口”的数量，可以发现这些“缺口”共有 12 个。因为使用的是 H20 GPU（具有 78 个 SM Core），并且 Cooperative 调度策略使用的 Tile Shape 为 (128, 128, 128)，因此我们可以推算每个 CTA 需要计算的 Output Tile 的数量：
+
+```bash
+>>> num_groups = 256 
+>>> M = 128
+>>> N = 512
+>> TileShapeM = 128 
+>> TileShapeN 128 
+>>> CTAs = 78
+>> num_groups * ((M / TileShapeM) * (N / TileShapeN) / CTAs 
+13.128205128205128
+```
+
+显然，多数 CTA 需要计算 13 个 Output Tile，在 Warp Specialization Persistent Kernel 中，每个 SM Core 只调度一个 CTA，因此 SM Core 上的运行状况就是单个 CTA 的运行状况。12 个缺口恰好对应了前 12 个 Output Tile 的 Epilogue 阶段。相比之下，Ping-pong 调度策略的 PM Sampling Timeline 显示 Tensor Pipe Throughput 始终处于一个相对稳定的水平，不会出现明显的“缺口”现象：
+
+![Pingpong_PM_Sampling](../../assets/Pingpong_PM_Sampling.png)
+
+## 总结
 
 在 H100 环境下压测过，跑大部分 shape 场景，Ping-pong scheduler 会比 Cooperative scheduler 稍微快一点。
 
