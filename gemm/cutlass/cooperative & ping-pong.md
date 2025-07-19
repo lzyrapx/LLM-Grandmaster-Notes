@@ -39,7 +39,7 @@ struct PingpongConfig {
 在 NVIDIA GPU 上，对于 GEMM 类的 Compute-bound 算子，性能优化的目标通常是**需要程序可以持续地、饱和地利用所有 SM Core 上的 Tensor Core 运算单元**。在 CUTLASS GEMM Kernel 中，Mainloop 阶段主要利用的是 Tensor Core 运算单元，而 Epilogue 阶段则是完成一些额外的计算操作（例如实施激活函数）并将结果写回 Global Memory，这些操作只依赖于 Cuda Core，不依赖于 Tensor Core。因此，结合性能优化的目标，希望在整个 Kernel 的生命周期中尽可能的使用 Mainloop 掩盖 Epilogue 的开销，避免将 Epilogue 直接暴露在 Timeline 上，以最大化 Tensor Core 的利用率。
 
 
-视频：[CUTLASS 2.x 与 3.x 的入门使用](https://www.bilibili.com/video/BV1XH4y1c7JZ?spm_id_from=333.788.videopod.sections&vd_source=3187e54ee4327cdd9b00a232b8ccb71c)
+教学视频：[CUTLASS 2.x 与 3.x 的入门使用](https://www.bilibili.com/video/BV1XH4y1c7JZ?spm_id_from=333.788.videopod.sections&vd_source=3187e54ee4327cdd9b00a232b8ccb71c)
 
 ![cooperative](../../assets/cooperative_gemm.png)
 
@@ -205,3 +205,17 @@ mainloop_pipe_consumer_state.advance(k_tile_count * NumMmaWarpGroups);
 
 - Ping-pong 调度策略通过 Ordered Sequence Barrier 严格的约束了两个 Consumer Warp Group 的执行顺序，让两个 Consumer Warp Group 交错执行 Mainloop 和 Epilogue，有效的 Overlap 掉了 Epilogue 的开销。
 - Cooperative 中的两个 Consumer Warp Group 依赖于同样的数据，在数据到达后以一种"竞争"的模式使用 Tensor Core 计算资源，在“势均力敌”的情况下，Mainloop 的执行结束时间相接近，导致 Epilogue 不能够被有效的 Overlap。
+
+官方提供的数据如下，感觉差不多：
+
+![benchmark_mainloop_scheduer](../../assets/benchmark_mainloop_scheduer.png)
+
+FP32 Accu 的 Hopper GEMM benchmark：
+
+![fp32_benchmark_better_performace](../../assets/fp32_benchmark_better_performace.png)
+
+FP16 Accu 的 Hopper GEMM benchmark：
+
+![fp16_benchmark_better_performace](../../assets/fp16_benchmark_better_performace.png)
+
+以上图片来自教学视频：[CUTLASS 2.x 与 3.x 的入门使用](https://www.bilibili.com/video/BV1XH4y1c7JZ?spm_id_from=333.788.videopod.sections&vd_source=3187e54ee4327cdd9b00a232b8ccb71c)
