@@ -64,7 +64,7 @@ K = 7168
 
 ![Cooperative_PM_Sampling](../../assets/Cooperative_PM_Sampling.png)
 
-可以看到，Tensor Pipe Throughput 出现了非常明显的周期性下降的现象，在 Timeline 上形成了一些“缺口”。如果我们仔细的去数一数这些“缺口”的数量，可以发现这些“缺口”共有 7 个。因为使用的是 **H100 GPU（有 132 个 SM Core）**，并且 Cooperative 调度策略使用的 Tile Shape 为 (128, 128, 128)，因此我们可以推算每个 CTA 需要计算的 Output Tile 的数量：
+可以看到，Tensor Pipe Throughput 出现了非常明显的周期性下降的现象，在 Timeline 上形成了一些“缺口”。如果我们仔细的去数一数这些“缺口”的数量，可以发现这些“缺口”共有 7 个。因为使用的是 **H100 GPU（有 132 个 SM Core， 4 * 132 个 Tensor Core）**，并且 Cooperative 调度策略使用的 Tile Shape 为 (128, 128, 128)，因此我们可以推算每个 CTA 需要计算的 Output Tile 的数量：
 
 ```bash
 >>> num_groups = 256 
@@ -80,6 +80,11 @@ K = 7168
 显然，多数 CTA 需要计算 7 个 Output Tile，在 Warp Specialization Persistent Kernel 中，每个 SM Core 只调度一个 CTA，因此 SM Core 上的运行状况就是单个 CTA 的运行状况。7 个缺口恰好对应了前 7 个 Output Tile 的 Epilogue 阶段。相比之下，Ping-pong 调度策略的 PM Sampling Timeline 显示 Tensor Pipe Throughput 始终处于一个相对稳定的水平，不会出现明显的“缺口”现象：
 
 ![Pingpong_PM_Sampling](../../assets/Pingpong_PM_Sampling.png)
+
+**为什么 Cooperative 调度策略使用的 Tile Shape 为 (128, 128, 128)，而不是 CUTLASS 配置里的 (256, 128, 128)？**
+
+因为 cooperative 的任务划分是让两个 consumer warp 一起处理一个 output tile，但在 M 维度上会做切分。比如 (256, 128, 128) 的 tile 会被拆成两个 (128, 128, 128)，每个 Warp 处理一半的 M 维度，N 和 K 维度保持不变。但实际在硬件上，Warp 内部会进一步拆分为更小的 Warp Tile（比如 64×64×16 和 64×64×32），Warp Tile 内部会进一步做 MMA 原子操作，执行多个 Tensor  Core 粒度的指令。
+
 
 ## 分析 Cooperative 无法 Overlap Epilogue 的原因
 
@@ -165,7 +170,7 @@ if (TileScheduler::compute_epilogue(work_tile_info, params.scheduler)) {
 
 [Ping-pong 代码](https://github.com/NVIDIA/cutlass/blob/a1aaf2300a8fc3a8106a05436e1a2abad0930443/include/cutlass/gemm/kernel/sm90_gemm_tma_warpspecialized_pingpong.hpp#L845)
 
-从以下 Ping-pong 代码中可以观察到，Ordered Sequence Barrier 的 wait 和 arrive 强制一个 Warp Group 完成自己的 Mainloop 后，另一个 Warp Group 才可以执行自己的 Mainloop。两 个Warp Group 的 Mainloop 执行阶段是完全错开的，因此可以用一个 Warp Group 的 Mainloop 执行阶段 Overlap 另一个 Warp Group 的 Epilogue。
+从以下 Ping-pong 代码中可以观察到，Ordered Sequence Barrier 的 wait 和 arrive 强制一个 Warp Group 完成自己的 Mainloop 后，另一个 Warp Group 才可以执行自己的 Mainloop。两个 Warp Group 的 Mainloop 执行阶段是完全错开的，因此可以用一个 Warp Group 的 Mainloop 执行阶段 Overlap 另一个 Warp Group 的 Epilogue。
 
 ```cpp
 // Allocate the accumulators for the (M,N) blk_shape
