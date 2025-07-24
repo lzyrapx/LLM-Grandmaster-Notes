@@ -13,6 +13,7 @@
   + [x] flash attention 3
   + [x] flash decoding
   + [x] flash decoding++
+  + [x] multi-head self-attention (MHSA)
   + [ ] multi-head attention (MHA)
   + [ ] grouped-query attention (GQA)
   + [ ] multi-query attention (MQA)
@@ -23,6 +24,7 @@
   + [ ] sage attention 3
   + [ ] paged attention
   + [ ] ring attention
+  + [ ] ring flash attention
   + [ ] linear attention
   + [ ] lightning attention
   + [ ] native sparse attention (NSA)
@@ -59,14 +61,17 @@
   + [ ] continous batching
   + [ ] speculative decoding
   + [ ] sliding window
-  + [ ] Multi-Token Prediction (MTP)
+  + [ ] multi-token prediction (MTP)
 - reinforcement learning
   + [ ] PPO
   + [ ] GRPO
   + [ ] DAPO
   + [ ] GPG
 - gemm
-  + [ ] deepGemm
+  + [ ] deep gemm
   - cutlass
     + [x] cooperative and ping-pong gemm schduler
+  - cublas
+- open source
+  + [ ] flash mla
 
