@@ -2,6 +2,7 @@
 
 - Multi-Head Self-Attention (`MHSA`) 是 `MHA` 的一个子集，特指 `Q`, `K`, `V` 都来自同一个输入序列 `X` 的情况。它的核心作用是计算序列内部元素之间的关系。
 - 当 `Q`, `K`, `V` 来源于不同序列时，就是更通用的 `MHA`，其核心作用是计算不同序列之间元素的关系。
+- Multi-Head Self-Attention (MHSA) 是 Multi-Head Attention (MHA) 的一个特例。
 
 ## 基础
 
@@ -37,7 +38,7 @@ $$
     - 得到 `h` 组 `Query`, `Key`, `Value` 矩阵：
         - `Q_i = X * W_i^Q` (形状 `n x (d_model / h)`)
         - `K_i = X * W_i^K` (形状 `n x (d_model / h)`)
-        - `V_i = X * W_i^V `(形状 `n x (d_model / h)`)
+        - `V_i = X * W_i^V` (形状 `n x (d_model / h)`)
     - 并行计算 `h` 个注意力头：
         - 对每一组 `Q_i`, `K_i`, `V_i`，独立地执行前面描述的 `Scaled Dot-Product Attention` 操作 (`Attention(Q_i, K_i, V_i)`)。
         - 每个头产生一个输出矩阵 `Z_i` (形状 `n x (d_model / h)`)。
@@ -46,3 +47,22 @@ $$
     - 线性投影：
         - 使用一个可学习的权重矩阵 `W^O` (形状 `d_model x d_model`) 对拼接后的 `Z_concat` 进行线性变换。
         - 得到最终的输出矩阵 `Z` (形状 `n x d_model`)： `Z = Z_concat * W^O`。
+
+`“Self”` 在 `MHSA` 中的含义：
+
+- 键点在于：`Query`, `Key`, `Value` 三个向量都来源于同一个输入序列 `X`。
+- 它计算的是一个序列内部元素之间的相互依赖关系（自省）。例如，在编码器中，MHSA 让序列中的每个单词都能关注序列中的所有其他单词，以建立更好的上下文表示。
+
+## Multi-Head Self-Attention (MHSA) 与 Multi-Head Attention (MHA) 的区别
+
+- Multi-Head Self-Attention (MHSA) 是 Multi-Head Attention (MHA) 的一个特例。
+- 核心区别在于 Query, Key, Value 的来源：
+
+|特性|Multi-Head Self-Attention|Multi-Head Attention|
+|:---:|:---:|:---:|
+|`Q` 来源|输入序列 `X` (自身)|一个序列 `X` (通常是目标序列)|
+|`K` 来源|输入序列 `X` (自身)|另一个序列 `Y` (通常是源序列)|
+|`V` 来源|输入序列 `X` (自身)|另一个序列 `Y` (通常是源序列)|
+|目的|计算同一个序列内部元素之间的关系|计算两个不同序列之间元素的关系|
+|典型应用|Transformer 解码器层的第一个注意力层|Transformer 解码器层的第二个注意力层|
+|关系|`MHA` 的一种特殊情况 (当 `X` = `Y`)|通用形式|
