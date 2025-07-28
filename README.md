@@ -13,15 +13,17 @@
   + [x] flash attention 3
   + [x] flash decoding
   + [x] flash decoding++
+  + [x] scaled dot-product attention (SDPA)
   + [x] multi-head self-attention (MHSA)
-  + [ ] multi-head attention (MHA)
+  + [x] multi-head attention (MHA)
   + [ ] grouped-query attention (GQA)
   + [ ] multi-query attention (MQA)
   + [ ] multi-head latent attention (MLA)
   + [ ] multi-token attention (MTA)
-  + [ ] sage attention 1
-  + [ ] sage attention 2
-  + [ ] sage attention 3
+  + [x] sage attention 1
+  + [x] sage attention 2
+  + [x] sage attention 2++
+  + [x] sage attention 3
   + [ ] paged attention
   + [ ] ring attention
   + [ ] ring flash attention
