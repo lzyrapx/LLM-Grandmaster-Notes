@@ -1,15 +1,17 @@
 # Asynchronous Barriers
-一般thread block中线程的同步是通过`__syncthreads()`进行的。一个线程运行到`__syncthreads()`时必须要等待其他线程到达，在等待时线程不能干别的事情。
+一般thread block中线程的同步是通过`__syncthreads()`进行的。一个线程运行到`__syncthreads()`时必须要等待其他线程到达才能执行后续代码，在等待时线程不能干别的事情。
+barrier等于是通过`barrier.arrive()`和`barrier.wait()`把`__syncthreads()`拆开了。线程到达arrive后可以干别的独立的事情，干完之后再通过wait确保与其他线程的同步。
 ![barrier](images/barrier.png "barrier")
-barrier等于是通过barrier.arrive()和barrier.wait()把__syncthreads()拆开了。线程到达arrive后可以干别的独立的事情，干完之后再通过wait确保与其他线程的同步。
 
-barrier是一个共享内存上的64位变量，expected_arrival_count，transcation_count，arrival_count和phase组成。方法函数有arrive和wait组成。
-其中expected_arrival_count表示有多少线程会参与到这个barrier中，这个值由用户提供。transcation_count是一个可选的变量，在Hopper的异步拷贝中可以用到。
+在PTX中有多种barrier指令，如`bar`，`barrier`和`mbarrier`等。本文中主要介绍`mbarrier`。
+
+mbarrier是一个共享内存上的64位变量，由expected_arrival_count，transcation_count，arrival_count和phase组成，函数有arrive和wait。
+其中expected_arrival_count表示有多少线程会参与到mbarrier中，这个值由用户提供。transcation_count是一个可选的变量，在Hopper的异步拷贝中可以用到。
 
 barrier在初始化时会根据用户提供的value初始化expected_arrival_count，然后把arrival_count也初始化成这个value。phase设成0。transcation_count如果有的话是根据异步拷贝的数据量设置的。
 
-当一个线程到达arrive函数后，arrival_count会减一，表示已经有一个线程到达了。当所有的参与线程都到达了arrive，arrival_count就会变成0。当arrival_count变成0时，表示所有的线程都到达了，此时phase状态会切换，arrival_count会重新设置为expected_arrival_count。
-如果设置了transcation_count会等待transcation_count归零后切换phase。
+当一个线程到达arrive函数后，arrival_count会减1，表示已经有一个线程到达了。当所有的参与线程都到达了arrive函数，arrival_count就会变成0。当arrival_count变成0时，表示所有的线程都到达了，此时phase状态会切换，arrival_count会重新被设置为expected_arrival_count。
+如果设置了transcation_count则mbarrier会等待transcation_count和arrival_count同时归零后切换phase。
 
 有两种方法等待wait函数切换状态，一种时基于token，arrive()会返回一个token，然后把token传到wait函数中去。这种方法比第二种更重，具体是怎么实现的呢。
 
