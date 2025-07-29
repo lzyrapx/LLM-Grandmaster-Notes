@@ -1,4 +1,4 @@
-## Asynchronous Barriers
+# Asynchronous Barriers
 一般thread block中线程的同步是通过`__syncthreads()`进行的。一个线程运行到`__syncthreads()`时必须要等待其他线程到达，在等待时线程不能干别的事情。
 ![barrier](images/barrier.png "barrier")
 barrier等于是通过barrier.arrive()和barrier.wait()把__syncthreads()拆开了。线程到达arrive后可以干别的独立的事情，干完之后再通过wait确保与其他线程的同步。
