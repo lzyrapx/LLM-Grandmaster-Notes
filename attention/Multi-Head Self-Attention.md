@@ -3,7 +3,7 @@
 - Multi-Head Self-Attention (`MHSA`) 是 `MHA` 的一个子集，特指 `Q`, `K`, `V` 都来自**同一个输入序列 `X` 的情况**。它的核心作用是计算序列内部元素之间的关系。
 - 当 `Q`, `K`, `V` 来源于不同序列时，就是更通用的 `MHA`，其核心作用是计算不同序列之间元素的关系。
 - `Multi-Head Self-Attention (MHSA)` 是 `Multi-Head Attention (MHA)` 的一个特例。
-- 很多开源代码里，类名叫 `MultiHeadAttention`（通用术语），但具体实现是 `Multi-Head Self-Attention`, 基本上 `query`、`key`、`value` 都直接通过对同一个 `hidden_state` 做线性变换得到。如下：
+- 很多开源代码里，类名叫 `MultiHeadAttention`（通用术语），但具体实现是 `Multi-Head Self-Attention`，基本上 `query`、`key`、`value` 都直接通过对同一个 `hidden_state` 做线性变换得到。如下：
 
     ```
     query = self.q_linear(hidden_state)

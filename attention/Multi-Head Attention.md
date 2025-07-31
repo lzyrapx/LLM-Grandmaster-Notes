@@ -5,13 +5,13 @@ $$
 $$
 
 $$
-\text { MultiHead }(Q, K, V)=\text {Concat}\left(\text {head}_{1}, \ldots, \text {head}_{h}\right) W^{O}
+MultiHead(Q, K, V)=Concat(head_{1},...,head_{h})W^{O}
 $$
 
 其中，
 
 $$
-\text { head }_{i}=\text{Attention}\left(Q W_{i}^{Q}, K W_{i}^{K}, V W_{i}^{V}\right)
+head_{i}=Attention(Q W_{i}^{Q}, K W_{i}^{K}, V W_{i}^{V})
 $$
 
 - 这是一个更通用的概念，`MHSA` 是 `MHA` 的子集。
