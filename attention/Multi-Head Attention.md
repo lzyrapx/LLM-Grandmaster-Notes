@@ -1,3 +1,32 @@
+## Multi-Head Attention (MHA)
+
+$$
+\mathrm{Attention}(Q,K,V)=\mathrm{softmax}(\frac{QK^{T}}{\sqrt{d_k}})V
+$$
+
+$$
+\text { MultiHead }(Q, K, V)=\text {Concat}\left(\text {head}_{1}, \ldots, \text {head}_{h}\right) W^{O}
+$$
+
+其中，
+
+$$
+\text { head }_{i}=\text{Attention}\left(Q W_{i}^{Q}, K W_{i}^{K}, V W_{i}^{V}\right)
+$$
+
+- 这是一个更通用的概念，`MHSA` 是 `MHA` 的子集。
+- `Q` 可以来自一个序列 `X`，而 `K` 和 `V` 来自另一个序列 `Y`。
+    - `Q = X * W^Q`
+    - `K = Y * W^K`
+    - `V = Y * W^V`
+- 目的： 让序列 `X` 中的每个元素（通常是目标序列）去 “查询” 序列 `Y`（通常是源序列）中的相关信息。这是一种跨序列的注意力机制。
+    - `Q` 来自解码器上一层的输出（目标序列的表示）。
+    - `K` 和 `V` 来自编码器最终的输出（源序列的表示）。
+- 应用： 在 `Transformer` 的解码器中，第二个注意力层（`Encoder-Decoder Attention`）就是典型的 `MHA`（不是 `MHSA`）：
+- **注意**：`Transformer`里，大部分 `forward` 的具体实现是 `MHSA`，但也可以更通用地叫 `MHA`。
+    - 严格意义上， `Transformer`里 只有 `Cross-Attention` 是 `MHA`，比如：[modeling_mega](https://github.com/huggingface/transformers/blob/2c0af41ce5c448f872f3222a75f56030fb2e5a88/src/transformers/models/deprecated/mega/modeling_mega.py#L1275)
+
+- 总的来说，`Multi-head Attention` 就是把序列中的每个 `token` 的表示经过线性映射到不同的子空间中，然后在不同的子空间中计算 `attention`，最后把结果拼接在一起并经过一个线性层来综合不同子空间的上下文表示，得到最终的 `Multi-head Attention` 的输出。
 
 ## Pytorch 实现
 
