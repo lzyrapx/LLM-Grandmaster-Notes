@@ -78,7 +78,7 @@
   + [ ] flash mla
 - ptx instructions
   + [ ] tensor
-  + [ ] mbarrier
+  + [x] mbarrier
   + [ ] cp.async
   + [ ] ldmatrix
   + [ ] mma
