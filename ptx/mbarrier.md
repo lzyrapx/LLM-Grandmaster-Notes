@@ -4,7 +4,7 @@ barrier 是一种用于线程同步的方法。一般 thread block 中线程的�
 
 barrier 同步等于是通过 `barrier.arrive()` 和 `barrier.wait()` 把 `__syncthreads()` 拆开了。线程到达 arrive 后可以干别的独立的事情，干完之后再通过 wait 确保与其他线程的同步。
 
-![barrier](../assets/barrier.png "barrier")
+![barrier](../assets/ptx/barrier.png "barrier")
 
 在 PTX 中有多种 barrier 指令，如 `bar`，`barrier` 和 `mbarrier` 等。
 
@@ -26,7 +26,7 @@ mbarrier 在初始化时会根据用户提供的 value 初始化 expected_arriva
 
 需要注意的是 mbarrier 只需要一个线程就可以初始化，如果多个线程进行初始化，transcation_count 会进行累加。
 
-![barrier_details](../assets/barrier_details.png "barrier1")
+![barrier_details](../assets/ptx/barrier_details.png "barrier1")
 
 下面详细介绍 mbarrier 以及指令的使用方法。
 
@@ -71,7 +71,7 @@ mbarrier 对象中包含下面的信息：
 | Pending arrival count  | 0                  | 2<sup>20</sup> - 1 |
 | tx-count               | -(2<sup>20</sup> - 1) | 2<sup>20</sup> - 1 |
 
-![count](../assets/tx-count.png "count")
+![count](../assets/ptx/tx-count.png "count")
 
 在 mbarrier 初始化阶段，会根据用户提供的值对上面三个变量进行初始化。其中设置 tx-count 的操作又被称为 `expect-tx` 操作。`expect-tx` 操作用来指定异步传输的数据量，带有一个 expectCount 参数，它会将 mbarrier 的 tx-count 增加 expectCount 指定的值。
 
