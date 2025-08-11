@@ -79,7 +79,7 @@
 - ptx instructions
   + [ ] tensor
   + [x] mbarrier
-  + [ ] cp.async
+  + [x] cp.async
   + [ ] ldmatrix
   + [ ] mma
   + [ ] wgmma
