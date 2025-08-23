@@ -63,27 +63,33 @@ ldmatrix 加载数据的过程可以视为两部分，第一部分，每个线�
 不难看出，加载一个 8×8 大小的矩阵时，行与行之间不需要连续，但是一行中的 8 个元素需要连续。
 
 加载完成后，warp 中的线程与矩阵中的数据的对应关系如下图所示。
-当 num = x1 时
-（插个图）
+
+当 num = x1 时，线程和数据的关系如下：其中 TiVj 表示线程 Ti 对应的第 Vj 个元素。
+
+![ldmatrix_x1](../assets/ptx/ldmatrix_x1.png "x1")
+
+当使用可选的限定符 .trans 时，线程与元素的对应关系会发生转置，变成下面这样。
+
+![ldmatrix_trans_x1](../assets/ptx/ldmatrix_trans_x1.png "x1_trans")
 
 当 num = x2 时
-（插个图）
+
+![ldmatrix_x2](../assets/ptx/ldmatrix_x2.png "x2")
 
 当 num = x4 时
-（插个图）
 
-当使用可选的限定符 .trans 时，表示矩阵以列主序（column-major）格式加载。线程与元素的对应关系会变成下面这样。
-插个图
+![ldmatrix_x4](../assets/ptx/ldmatrix_x4.png "x4")
 
+至于为什么是这种布局，主要是因为 mma 指令需要这种布局进行计算。
 
 
 ## 代码测试
 
-下面使用代码来测试ldmatrix是如何从共享内存中加载数据的。
+下面使用代码来测试 ldmatrix 是如何从共享内存中加载数据的。
 
 ### num=x1
 
-当num=x1时可以处理一个8×8矩阵。首先将数据从全局内存加载到共享内存中。TS代表src_data的数据类型，在这里时fp16。
+当 num=x1 时可以处理一个 8×8 矩阵。首先将数据从全局内存加载到共享内存中。TS 代表 src_data 的数据类型，在这里是 fp16。
 
 ```cpp
     int tid = threadIdx.x;
@@ -95,7 +101,7 @@ ldmatrix 加载数据的过程可以视为两部分，第一部分，每个线�
     __syncthreads();
 ```
 
-然后处理每行的首地址和线程的对应关系。根据上面的介绍，num=x1时只需要0-7号线程来处理8行的首地址就行了，其余线程的地址不会对结果产生影响，所以可以写成下面这样。
+然后处理每行的首地址和线程的对应关系。根据上面的介绍，num=x1 时只需要 0-7 号线程处理 8 行的首地址就行了，其余线程的地址不会对结果产生影响，所以可以写成下面这样。
 
 ```cpp
     TS *smem_addr = nullptr;
@@ -105,7 +111,7 @@ ldmatrix 加载数据的过程可以视为两部分，第一部分，每个线�
     }
 ```
 
-然后使用ldmatrix指令进行搬运数据。这里每个线程对应的数据会保存在dst1中。
+然后使用 ldmatrix 指令进行搬运数据。这里每个线程对应的数据会保存在 dst1 中。
 
 ```cpp
     uint32_t dst1;
@@ -115,7 +121,7 @@ ldmatrix 加载数据的过程可以视为两部分，第一部分，每个线�
                  : "r"(smem_int_ptr));
 ```
 
-到这里32个线程分别加载了8×8矩阵中的2个元素。为了验证加载结果，我们把每个线程寄存器中的数据保存到D中。
+到这里 32 个线程分别保存了 8×8 矩阵中的 2 个元素。为了验证加载结果，我们把每个线程寄存器中的数据保存到 D 中。
 
 ```cpp
     half_t r1, r2;
@@ -128,7 +134,7 @@ ldmatrix 加载数据的过程可以视为两部分，第一部分，每个线�
     D[row * N + col + 1] = r2;
 ```
 
-打印结果如下。
+打印结果如下。可以看到和上面介绍的布局一致。
 
 ```cpp
 thread=0, val= 1  3
@@ -163,6 +169,7 @@ thread=28, val= 1  6
 thread=29, val= 1  8
 thread=30, val= 5  4
 thread=31, val= 3  4
+
 m = 8, n = 8
 The logical shape of A:
  1  3  1  4  5  4  8  9
@@ -215,8 +222,6 @@ __global__ void ldmatrix_x1(TS *S, TD *D, int M, int N)
     r1.storage = static_cast<uint16_t>(dst1 & 0xFFFF);
     r2.storage = static_cast<uint16_t>(dst1 >> 16);
 
-    print_value(tid, r1, r2);
-
     int row = tid / 4;
     int col = tid % 4 * 2;
     D[row * N + col + 0] = r1;
@@ -225,6 +230,9 @@ __global__ void ldmatrix_x1(TS *S, TD *D, int M, int N)
 ```
 
 ### num=x2
+
+num = x2 时需要一个warp的前16个线程加载数据，代码可以写成下面这样。
+
 ```cpp
 template <class TS, class TD>
 __global__ void ldmatrix_x2(TS *S, TD *D, int M, int N)
@@ -287,24 +295,6 @@ The logical shape of A:
  7  4  9  2  9  2  9  1
  7  9  4  1  3  2  8  4
 
-The logical shape of B:
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0
-
 The copy result of B:
  1  3  1  4  5  4  8  9
  6  5  7  7  2  3  1  6
@@ -326,9 +316,7 @@ The copy result of B:
 
 ### num=x4
 
-num=x4基本包含了num=x2，所以直接介绍num=x4时ldmatrix的搬运过程。
-
-num=x4时可以处理4个8×8矩阵，因此一共可以处理256个16bit元素。同样的，我们需要先把数据搬运到共享内存中。
+num = x4 时可以处理 4 个 8×8 矩阵，因此一共可以处理 256 个 16bit 元素。同样的，先把数据搬运到共享内存中。
 
 ```cpp
     int tid = threadIdx.x;
@@ -341,13 +329,14 @@ num=x4时可以处理4个8×8矩阵，因此一共可以处理256个16bit元素�
     __syncthreads();
 ```
 
-然后处理每个线程与每行矩阵首地址的对应关系。此时我们需要使用全部32个线程处理32行的首地址。
+然后处理每个线程与每行矩阵首地址的对应关系。此时需要使用全部 32 个线程处理 32 行的首地址。
 
 ```cpp
 TS *smem_addr = smem_src + tid % M * N + tid / M * 8;
 ```
 
-然后使用ldmatrix进行加载。此时一个线程有4个寄存器，可以加载8个16bit数据。
+然后使用 ldmatrix 进行加载。此时一个线程有 4 个寄存器，可以加载 8 个 16bit 数据。
+
 ```cpp
     uint32_t dst0, dst1, dst2, dst3;
     uint32_t smem_int_ptr = cast_smem_ptr_to_uint(smem_addr);
@@ -357,6 +346,7 @@ TS *smem_addr = smem_src + tid % M * N + tid / M * 8;
 ```
 
 打印一下每个线程对应的元素和搬运结果。
+
 ```cpp
 thread=0, val=1 3 4 7 6 5 6 9
 thread=1, val=1 4 8 5 7 7 9 3
@@ -390,6 +380,7 @@ thread=28, val=7 4 9 6 7 9 1 3
 thread=29, val=9 2 3 6 4 1 4 5
 thread=30, val=9 2 3 8 3 2 3 7
 thread=31, val=9 1 8 3 8 4 9 9
+
 m = 16, n = 16
 The logical shape of A:
  1  3  1  4  5  4  8  9  6  5  7  7  2  3  1  6
@@ -474,7 +465,9 @@ __global__ void ldmatrix_x4_trans(TS *S, TD *D, int M, int N)
     D[(row + 8) * N + col + 9] = r8;
 }
 ```
+
 计算结果：
+
 ```cpp
 m = 16, n = 16
 The logical shape of A:
@@ -494,24 +487,6 @@ The logical shape of A:
  5  2  8  2  6  8  8  5  1  5  5  4  4  2  4  5
  7  5  4  1  6  2  7  2  6  3  3  8  9  8  1  4
  9  6  3  6  3  8  8  3  1  3  4  5  3  7  9  9
-
-The logical shape of B:
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
- 0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
 
 The copy result of B:
  1  6  2  5  2  4  3  7  6  8  9  1  1  2  3  7
@@ -536,8 +511,7 @@ The copy result of B:
 
 ### 指令介绍
 
-stmatrix指令与ldmatrix类似，可以用于将寄存器中的数据保存到共享内存中。
-使用方法也和ldmatrix类似，不过需要sm_90以上才可以使用。
+stmatrix 指令与 ldmatrix 类似，可以用于将寄存器中的数据保存到共享内存中。使用方法也和 ldmatrix 类似，不过需要 sm_90 以上才可以使用。
 
 ```cpp
 stmatrix.sync.aligned.shape.num{.trans}{.ss}.type [p], r;
@@ -548,29 +522,9 @@ stmatrix.sync.aligned.shape.num{.trans}{.ss}.type [p], r;
 .type   = {.b16, .b8};
 ```
 
-指令中.sync和.aligned的含义与ldmatrix中的相同，.sync代表stmatrix会使执行线程等待，直到 warp 中的所有线程都执行相同的 stmatrix 指令后才会继续执行。.aligned 限定符表示，warp 中的所有线程必须执行相同的 stmatrix 指令。
+### 代码测试
 
-.shape代表一个指令加载的矩阵大小。stmatrix支持m8n8和m16n8两种形状，其中m16n8适用于bit8类型，m8n8适用于bit16类型。
-
-.num可以是.x1，.x2和.x4，分别代表加载1个，2个和4个8×8大小的矩阵。
-
-矩阵中每一行不需要在内存中连续存储。每个矩阵所需的八个地址由八个线程提供，具体取决于.num的值，如下表所示。每个地址对应矩阵行的起始位置。地址 `addr0` 到 `addr7` 对应第一个矩阵的行，地址 `addr8` 到 `addr15` 对应第二个矩阵的行，依此类推。
-
-
-当num=x1时stmatrix保存第一个8*8矩阵中的64个16bit数据。只需要将8行中每行的首地址传给0-7号线程，则一个warp中32个线程的每一个线程会需要用一个32bit的寄存器保存2个16bit的数据，所以一共会保存64个数据。
-
-当num=x2时stmatrix会保存2个8*8矩阵中的128个16bit数据。此时需要将16行中每行的首地址传给0-7和8-15号线程。一个warp中的32个线程中每一个线程都会使用2个32bit的寄存器保存4个16bit的数据，所以一共会保存两个矩阵中的128个数据。
-
-当num=x4时stmatrix会保存4个8×8矩阵中的256个16bit数据。需要将32个行的首地址分别传给32个线程。一个线程需要使用4个32bit寄存器保存8个16bit的数据，所以可以保存4个8×8矩阵中的256个数据。
-
-对于一个8×8矩阵，32个线程对应的保存数据如下图所示。每个线程在一个8*8矩阵中保存2个16bit数据，一行8个数据需要用4个线程保存，8行正好需要32个线程，这是num=x1的情况。
-
-当num=x2时第二个矩阵的元素会按照上表中的布局保存到每个线程的第二个寄存器中。类似的当num=x4时，第三个和第四个矩阵的元素会保存到每个线程的后续的寄存器中。
-
-可选的限定符.trans表示矩阵以列主序（column-major）格式保存。
-
-代码测试
-num=x4
+__num=x4__
 
 ```cpp
 template <class TS, class TD>
@@ -604,7 +558,7 @@ __global__ void stmatrix_x4(TS *S, TD *D, int M, int N)
 }
 ```
 
-测试结果
+__测试结果__
 
 ```cpp
 m = 16, n = 16
