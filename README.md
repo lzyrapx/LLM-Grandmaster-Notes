@@ -77,10 +77,9 @@
 - open source
   + [ ] flash mla
 - ptx instructions
-  + [ ] tensor
   + [x] mbarrier
   + [x] cp.async
-  + [ ] ldmatrix
-  + [ ] mma
+  + [x] ldmatrix
+  + [x] mma
   + [ ] wgmma
 
