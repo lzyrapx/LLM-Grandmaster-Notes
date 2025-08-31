@@ -80,8 +80,8 @@
   + [ ] flash mla
 - ptx instructions
   + [ ] tensor
-  + [ ] mbarrier
-  + [ ] cp.async
+  + [x] mbarrier
+  + [x] cp.async
   + [ ] ldmatrix
   + [ ] mma
   + [ ] wgmma
