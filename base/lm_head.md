@@ -5,10 +5,10 @@
 e.g.
 Gemma 模型的 `LM Head`（语言模型头） 是一个线性层（`nn.Linear`），其作用是将模型最后一层的隐藏状态（`hidden states`）映射到词汇表空间，用于生成下一个 `token` 的概率分布。
 
-
 ## Gemma 的 LM Head
 
 以下是 gemma 的模型结构，可以看到 `lm head` 在模型结构的最后一层。
+
 ```python
 GemmaForCausalLM(
   (model): GemmaModel(
@@ -41,6 +41,7 @@ GemmaForCausalLM(
 ### LM Head 的结构
 
 输入维度：等于模型的隐藏层维度（`hidden_size`），例如：
+
 - Gemma-2B：隐藏层维度为 `2048`
 - Gemma-7B：隐藏层维度为 `4096`
 
@@ -63,6 +64,7 @@ Gemma-7B：`4096 × 256,000 = 1,048,576,000`（约 1B 参数）
 Gemma 的 `LM Head `没有额外的归一化或激活函数，直接通过线性投影生成 `logits`。
 
 在代码（如 Hugging Face 实现）中，通常定义为：
+
 ```python
 self.lm_head = nn.Linear(hidden_size, vocab_size)
 ```

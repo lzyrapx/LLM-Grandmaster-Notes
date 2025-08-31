@@ -3,6 +3,8 @@
 📚The path to LLM mastery is paved with broken embeddings and resurrected gradients.
 
 - base
+  + [ ] transformer
+  + [ ] vit transformer
   + [x] lm head
   + [ ] kv cache
 - attention
