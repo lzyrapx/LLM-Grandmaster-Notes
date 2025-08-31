@@ -24,7 +24,7 @@ $$
     - `K` 和 `V` 来自编码器最终的输出（源序列的表示）。
 - 应用： 在 `Transformer` 的解码器中，第二个注意力层（`Encoder-Decoder Attention`）就是典型的 `MHA`（不是 `MHSA`）：
 - **注意**：`Transformer`里，大部分 `forward` 的具体实现是 `MHSA`，但也可以更通用地叫 `MHA`。
-    - 严格意义上， `Transformer`里 只有 `Cross-Attention` 是 `MHA`，比如：[modeling_mega](https://github.com/huggingface/transformers/blob/2c0af41ce5c448f872f3222a75f56030fb2e5a88/src/transformers/models/deprecated/mega/modeling_mega.py#L1275)
+    - 严格意义上， `Transformer`里 只有 `Cross-Attention` 是 `MHA`，比如：[modeling_mega](https://github.com/huggingface/transformers/blob/2c0af41ce5c448f872f3222a75f56030fb2e5a88/src/transformers/models/deprecated/mega/modeling_mega.py#L1270)
 
 - 总的来说，`Multi-head Attention` 就是把序列中的每个 `token` 的表示经过线性映射到不同的子空间中，然后在不同的子空间中计算 `attention`，最后把结果拼接在一起并经过一个线性层来综合不同子空间的上下文表示，得到最终的 `Multi-head Attention` 的输出。
 
