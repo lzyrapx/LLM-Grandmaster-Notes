@@ -4,7 +4,7 @@
 
 - base
   + [ ] transformer
-  + [ ] vit transformer
+  + [x] vit transformer
   + [x] lm head
   + [ ] kv cache
 - attention
@@ -64,6 +64,11 @@
   + [ ] chunked prefill
   + [ ] continous batching
   + [ ] speculative decoding
+    + [ ] Medusa
+    + [ ] Lookahead decoding
+    + [ ] NGram
+    + [ ] OSD
+    + [ ] Eagle 1,2,3
   + [ ] sliding window
   + [ ] multi-token prediction (MTP)
 - reinforcement learning
@@ -74,7 +79,7 @@
 - gemm
   + [ ] deep gemm
   - cutlass
-    + [x] cooperative and ping-pong gemm schduler
+    + [x] cooperative and ping-pong gemm scheduler
   - cublas
 - open source
   + [ ] flash mla
