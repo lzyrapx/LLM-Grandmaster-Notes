@@ -71,8 +71,10 @@ wgmma 指令可以从寄存器或共享内存中加载数据。从寄存器中�
 128 个线程与元素的对应关系如下，一个 warp 的线程负责 16 行 16 列数据，4 个 warp 正好对应 64 行 16 列。而且单个 warp 的加载方式与 mma 指令 [m16nNk16](./mma.md) 的形状相同。
 
 <div align="center">
-    <img src="../assets/ptx/wgmma/wgmma_A.png" width="90%" height="auto" alt="wgmma_a">
+    <img src="../assets/ptx/wgmma/wgmma_A.png" width="90%" height="auto" alt="wgmma_a"><br>
+    small>wgmma A</small>
 </div>
+<br>
 
 #### 矩阵 D
 
@@ -83,7 +85,8 @@ wgmma 指令可以从寄存器或共享内存中加载数据。从寄存器中�
 128 个线程的对应关系如下，可以看到 8 列为一组，需要的寄存器的数量随着 N 的增多而增多。当 N 等于8时，一个 warp 的线程和数据的对应关系也和 mma 指令的 [m16nNk16](./mma.md) 的 D 矩阵类似。
 
 <div align="center">
-    <img src="../assets/ptx/wgmma/wgmma_D.png" width="90%" height="auto" alt="wgmma_b">
+    <img src="../assets/ptx/wgmma/wgmma_D.png" width="90%" height="auto" alt="wgmma_a"><br>
+    small>wgmma A</small>
 </div>
 <br>
 
@@ -650,7 +653,9 @@ A 个 B 加载完成后，初始化两个描述符。变量按照上面分析的
     }
 ```
 
-上面 wgmma 的计算结果就是这两个矩阵相乘的结果。完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
+上面 wgmma 的计算结果就是这两个矩阵相乘的结果。
+
+完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
 
 ### A M-major 64B swizzle，B N-major none swizzle
 
@@ -668,7 +673,7 @@ half：Sw<2,4,3> o smem_ptr16b o ((_32,2),(_8,2)):((_1,_256),(_32,512))
 
 128bit：Sw<2,4,3> o smem_ptr128b o ((_4,2),(_8,2)):((_1,_32),(_4,64))
 
-所以在 M 方向上被 swizzle pattern 分成 2 份，K 方向上被 8 列分成了 2 份。所以这里 LBO = 32，SBO = 64。而且 MN-major 需要转置，tnspA = 1。LAYOUT_TYPE = 2。
+所以在 M 方向上被 swizzle pattern 分成 2 份，K 方向上被 8 列分成了 2 份。所以这里 LBO = 32，SBO = 64。而且 MN-major 需要转置，tnspA = 1，LAYOUT_TYPE = 2。
 
 __矩阵 B__
 
@@ -682,61 +687,84 @@ half：Sw<0,4,3> o smem_ptr16b o ((_8,4),(_8,2)):((_1,_64),(_8,256))
 
 128bit：Sw<0,4,3> o smem_ptr128b o ((_1,4),(_8,2)):((_1,_8),(_1,32))
 
-所以在 N 方向上被分成 4 份，K 方向上被 8 列分成了 2 份。这里 LBO = 32，SBO = 8。而且 N-major 需要转置，tnspB = 1。1。LAYOUT_TYPE = 0。
-
-知道A和B的布局和两者的描述符参数后就可以开始写代码了。完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
-
-### A M-major 128B swizzle，B K-major 32B swizzle
-
-还是以m64n32k16，A fp16，B fp16，C fp32为例。
-初始化与上面相同，不同的是A和B的描述符参数。
-先确定A和B矩阵的描述符。
-
-当A是M-major，128B-swizzling时。pattern的layout是 Layout: Sw<3,0,3> o _0 o (_8,_8):(_1,_8)，一个元素128bit。
-使用这个layout对64×16的shape进行tiling会得到
-Sw<3,4,3> o smem_ptr16b o ((_64,1),(_8,2)):((_1,_512),(_64,512))
-Sw<3,4,3> o smem_ptr128b o ((_8,1),(_8,2)):((_1,_64),(_8,64))
-所以在M方向上被swizzle pattern分成1份，所以这里stride不起作用，所以LBO可以随便设置。
-SBO就是64。
-根据前面的描述可知，在128B swizzling的情况下，一个pattern的大小是8*8，因为是fp16，所以pattern的大小是64*8。
-layout是Swizzle<3, 4, 3> o ((T,8,m),(8,k)):((1,T,LBO),(8T,SBO))，其中因为A的shape是64*16，所以m=1，T=8，k=2。LBO是pattern重复的offset，因为在M方向上只重复一次，所以LBO不起作用，先设为512。
-SBO是前8列到后8列的offset，在这里是512。
-所以LAYOUT_TYPE=1，sbo = 512 * 2 / 16 = 64，lbo = 64 * 2 / 16 = 8。而且M-major需要转置，tnspA=1。
-此时，layout为：Swizzle<3, 3, 3> o ((8,8,1),(8,2)):((1,8,64),(64,512))。
-布局如下，布局里的值是当前位置在物理内存中的offset。
-
-矩阵B：
-因为矩阵B也需要从共享内存中加载，所以也需要一个描述符。
-当是K-major时，32B-swizzling，pattern的layout是128bit：Sw<1,0,3> o _0 o (_8,_2):(_2,_1)
-使用这个pattern对32×16进行tiling会得到：
-Sw<1,4,3> o smem_ptr16b o ((_8,4),(_16,1)):((_16,_128),(_1,512))
-Sw<1,4,3> o smem_ptr128b o ((_8,4),(_2,1)):((_2,_16),(_1,64))
-所以在N方向上被8分成4份，在K方向上包含两个128bit的元素。所以LBO = 1，SBO = 16。
-
-根据前面的描述可知，32B swizzling的pattern是8*2，因为是fp16，所以pattern是8*16。
-layout是Swizzle<1, 4, 3> o ((8,m),(T,2k)):((2T,SBO),(1,T))，其中因为B的shape是32*16，所以m=4，T=8，k=1，2k=2，LBO是1，SBO是前8行到后8行的offset，所以是128。
-所以LAYOUT_TYPE=3，sbo = 128 * 2 / 16 = 16，lbo = 1。而且K-major不需要转置，tnspB=0。
-此时，layout为：Swizzle<1, 3, 3> o ((8,4),(8,2)):((16,128),(1,8))，布局如下。
-这个布局是N*K的，而矩阵B实际计算时是K*N的，所以还需要把上面的布局转置一下。
+所以在 N 方向上被分成 4 份，K 方向上被 8 列分成了 2 份。这里 LBO = 32，SBO = 8。而且 N-major 需要转置，tnspB = 1。LAYOUT_TYPE = 0。
 
 知道A和B的布局和两者的描述符参数后就可以开始写代码了。
 
+完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
+
+### A M-major 128B swizzle，B K-major 32B swizzle
+
+还是以 m64n32k16，A=fp16，B=fp16，C=fp32 为例。
+
+初始化与上面相同，不同的是 A 和 B 的描述符参数。
+
+__矩阵 A__
+
+当 A 是 M-major，128B-swizzle 时，pattern 的 layout是 `Sw<3,0,3> o _0 o (_8,_8):(_1,_8)`，一个元素 128bit。
+
+使用这个 layout 对 64×16 的 shape 进行 tiling 会得到：
+
+half：Sw<3,4,3> o smem_ptr16b o ((_64,1),(_8,2)):((_1,_512),(_64,512))
+
+128bit：Sw<3,4,3> o smem_ptr128b o ((_8,1),(_8,2)):((_1,_64),(_8,64))
+
+所以在 M 方向上被 swizzle pattern 分成 1 份，所以这里 stride 不起作用，所以 LBO 可以随便设置。SBO = 64。tnspA = 1，LAYOUT_TYPE = 1。
+
+__矩阵 B__
+
+当 B 是 K-major，32B-swizzle 时，pattern 的 layout 是 `Sw<1,0,3> o _0 o (_8,_2):(_2,_1)`，一个元素 128bit。
+
+使用这个 pattern 对 32×16 进行 tiling 会得到：
+
+half：Sw<1,4,3> o smem_ptr16b o ((_8,4),(_16,1)):((_16,_128),(_1,512))
+
+128bit：Sw<1,4,3> o smem_ptr128b o ((_8,4),(_2,1)):((_2,_16),(_1,64))
+
+所以在 N 方向上被 8 分成 4 份，在 K 方向上包含两个 128bit 的元素。所以 LBO = 1，SBO = 16。tnspB = 0。LAYOUT_TYPE = 3。
+
+完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
+
 ### A register，B N-major 64B swizzle
 
-让A保存到寄存器中就很简单了
+当 A 从寄存器中加载数据时就很简单了，只要确保每个线程加载到正确的数据就行。
+
+但是矩阵 B 从共享内存中加载还是需要一个矩阵描述符。
+
+__矩阵 B__
+
+当 B 是 N-major，64B-swizzle 时，pattern 的 layout 是 `Sw<2,0,3> o _0 o (_4,_8):(_1,_4)`，一个元素 128bit。
+
+使用这个 pattern 对 32×16 进行 tiling 会得到：
+
+half：Sw<2,4,3> o smem_ptr16b o ((_32,1),(_8,2)):((_1,256),(_32,256))
+
+128bit：Sw<2,4,3> o smem_ptr128b o ((_4,1),(_8,2)):((_1,_32),(_4,32))
+
+所以在 N 方向上被 4 分成 1 份，所以这里 stride 不起作用，LBO 可以随便设置。在 K 方向上包含两个 128bit 的元素。所以 SBO = 32。tnspB = 1。LAYOUT_TYPE = 2。
+
+完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
+
 
 ## wgmma.fence
 
-强制执行 wgmma.mma_async 和其他操作之间的寄存器访问顺序。
-Enforce an ordering of register accesses between wgmma.mma_async and other operations.
+在 wgmma。mma_async 操作和其他操作之间建立寄存器访问顺序。确保 wgmma 使用的寄存器数据是有效的。
+
+```cpp
 wgmma.fence.sync.aligned;
-wgmma.fence 指令会在先前访问任何 warpgroup 寄存器与后续通过 wgmma.mma_async 指令访问相同寄存器之间建立顺序。只有累加器寄存器和包含矩阵 A 片段的输入寄存器才需要此顺序。
-必须在 Warpgroup 的所有 Warp 中，在以下位置发出 wgmma.fence 指令：
-1. 在 Warpgroup 中第一个 wgmma.mma_async 操作之前。
-2. 在 Warpgroup 中某个线程的寄存器访问与任何访问相同寄存器（作为累加器或包含矩阵 A 片段的输入寄存器）的 wgmma.mma_async 指令之间，除非这些累加器寄存器访问是跨多个相同形状的 wgmma.mma_async 指令进行的。在后一种情况下，默认提供顺序保证。
-必须使用异步代理栅栏来在 wgmma.mma_async 指令中，对共享内存矩阵的先前写入与对相同矩阵的后续读取之间建立顺序。
-强制使用的 .sync 限定符表示 wgmma.fence 指令会导致执行线程等待，直到 Warp 中的所有线程都执行相同的 wgmma.fence 指令后才能恢复执行。
-强制使用的 .aligned 限定符表示 Warpgroup 中的所有线程都必须执行相同的 wgmma.fence 指令。在条件执行代码中，仅当已知 Warpgroup 中的所有线程对条件的求值相同时，才应使用 wgmma.fence 指令，否则行为未定义。
+```
+
+当多个 wgmma.mma_async 访问相同的寄存器时，需要通过该指令创建一个访问顺序。只有累加寄存器和矩阵 A 对应的寄存器才需要此顺序。
+
+wgmma.fence 指令必须由一个 warpgroup 中所有的 warp 在以下位置进行发射：
+
+- 在 warpgroup 中第一个 wgmma.mma_async 之前。
+
+- 在 warpgroup 中某个线程的寄存器访问与任何访问相同寄存器（作为累加器或包含矩阵 A 片段的输入寄存器）的 wgmma.mma_async 指令之间，除非这些累加器寄存器访问是跨多个相同形状的 wgmma.mma_async 指令进行的。在后一种情况下，默认提供顺序保证。
+
+async proxy fence 必须被使用来建立对共享内存矩阵的先前写入与对相同矩阵的后续读取之间建立顺序。
+
+```cpp
 // Example 1, first use example:
 wgmma.fence.sync.aligned;    // Establishes an ordering w.r.t. prior accesses to the registers s32d<0-3>
 wgmma.mma_async.sync.aligned.m64n8k32.s32.u8.u8  {s32d0, s32d1, s32d2, s32d3},
@@ -756,23 +784,109 @@ wgmma.mma_async.sync.aligned.m64n8k32.s32.u8.u8  {s32d4, s32d5, s32d6, s32d7},
                                                   descB, scaleD;
 wgmma.commit_group.sync.aligned;
 wgmma.wait_group.sync.aligned 0;
+```
 
 ## wgmma.commit_group
 
-将所有先前未提交的 wgmma.mma_async 操作提交到 wgmma 组中。
+将所有先前未提交的 wgmma.mma_async 操作提交到 wgmmagroup 中。
+
+```cpp
 wgmma.commit_group.sync.aligned;
+```
+
 wgmma.commit_group 指令会为每个 warpgroup 创建一个新的 wgmma-group，并将所有先前由正在执行的 warp 发起但尚未提交给任何 wgmma-group 的 wgmma.mma_async 指令批量添加到新的 wgmma-group 中。如果没有未提交的 wgmma.mma_async 指令，则 wgmma.commit_group 会生成一个空的 wgmma-group。
+
 执行线程可以使用 wgmma.wait_group 等待 wgmma-group 中所有 wgmma.mma_async 操作完成。
-强制使用的 .sync 限定符表示 wgmma.commit_group 指令会导致执行线程等待 warp 中的所有线程执行相同的 wgmma.commit_group 指令后才能恢复执行。
-强制使用的 .aligned 限定符表示 warpgroup 中的所有线程必须执行相同的 wgmma.commit_group 指令。在条件执行的代码中，仅当已知 warpgroup 中的所有线程对条件的评估相同时，才应使用 wgmma.commit_group 指令，否则行为未定义。
 
 ## wgmma.wait_group
 
 发出信号通知前一个 warpgroup 操作已完成。
+
+```cpp
 wgmma.wait_group.sync.aligned N;
+```
+
 wgmma.wait_group 指令将导致执行线程等待，直到最近的 wgmma 组中只有 N 个或更少的 wgmma 组处于待处理状态，并且执行线程提交的所有先前 wgmma 组均已完成。例如，当 N 为 0 时，执行线程将等待所有先前的 wgmma 组完成。操作数 N 是一个整数常量。
+
 访问包含 wgmma.mma_async 指令的矩阵 A 片段的累加器寄存器或输入寄存器时，如果未先执行等待 wgmma 组（包括该 wgmma.mma_async 指令）的 wgmma.wait_group 指令，则属于未定义行为。
-强制 .sync 限定符表示 wgmma.wait_group 指令导致执行线程等待，直到 warp 中的所有线程都执行相同的 wgmma.wait_group 指令后才能恢复执行。
-强制的 .aligned 限定符表示 warpgroup 中的所有线程必须执行相同的 wgmma.wait_group 指令。在条件执行代码中，仅当已知 warpgroup 中的所有线程对条件的评估相同时，才应使用 wgmma.wait_group 指令，否则行为未定义。
 
 ## 附录
+
+>为什么 K-major 不需要转置，MN-major 需要转置。
+
+首先回顾一下前面介绍的 ldmatrix 指令和 mma 指令。
+
+ldmatrix 指令是从共享内存加载数据到寄存器中的指令，虽然 wgmma 不需要这个指令，但是 wgmma 从共享内存加载数据的方式与 ldmatrix 类似。
+
+ldmatrix 指令一次可以读取 16 bytes，也就是 128 bits 的数据，然后将读取的数据分发到不同的线程的寄存器中。
+
+<div align="center">
+    <img src="../assets/ptx/ldmatrix_x1.png" width="60%" height="auto" alt="ldmatrix"><br>
+    <small>ldmatrix</small>
+</div>
+<br>
+
+上图是加载 8×8 矩阵时线程和数据的对应关系，矩阵是 row-major，0-7 号线程一个加载 128 bits 数据，然后分发到 32 个线程中。
+
+当指令使用可选的限定符 .trans 时，线程与元素的对应关系会变成下面这样。
+
+<div align="center">
+    <img src="../assets/ptx/ldmatrix_trans_x1.png" width="60%" height="auto" alt="ldmatrix"><br>
+    <small>ldmatrix trans</small>
+</div>
+<br>
+
+矩阵还是 row-major，0-7 号线程还是会一次加载一行的 128 bits 数据，但是会按照转置的形式分发到每个线程中，最终看起来线程是按照转置的形式加载矩阵中的数据。
+
+mma 指令都是从寄存器中获取计算数据的，以 m16n8k16 指令为例。
+
+矩阵 A 的 shape 是 16×8，线程与数据的关系如下，可以看到与 wgmma 的 A 矩阵的单个 warp 的对应关系相同。
+
+<div align="center">
+    <img src="../assets/ptx/mma_m16n8k16_A.png" width="50%" height="auto" alt="mma_m16n8k16_A"><br>
+    <small>mma_m16n8k16_A</small>
+</div>
+<br>
+
+矩阵 C 和 D 的 shape 是 16×16，线程与数据的关系如下，可以看到与 wgmma 的 D 矩阵的单个 warp 对应的关系相同。
+
+<div align="center">
+    <img src="../assets/ptx/mma_m16n8k16_C.png" width="50%" height="auto" alt="mma_m16n8k16_C"><br>
+    <small>mma_m16n8k16_C</small>
+</div>
+<br>
+
+矩阵 B 的 shape 是 8×16，线程与数据的关系如下。
+
+<div align="center">
+    <img src="../assets/ptx/mma_m16n8k16_B.png" width="50%" height="auto" alt="mma_m16n8k16_B"><br>
+    <small>mma_m16n8k16_B</small>
+</div>
+<br>
+
+虽然 wgmma 没有说明矩阵 B 从共享内存中加载数据后是怎么处理的，但是猜测也是按照这种方式把数据存放到寄存器中然后再计算的。
+
+
+### ldmatrix 指令和 mma 指令结合
+
+ldmatrix 指令和 mma 指令两者结合起来就可以知道矩阵 A 和 B 是如何从共享内存中加载数据的。
+
+__矩阵 A__
+
+对于矩阵 A，假设矩阵 A 中的数据是 row-major，因为矩阵 A 是 M×K，所以又可以称为 K-major。
+
+此时 ldmatrix 根据矩阵 A 中每一行的首地址加载一行的 128 bits 数据，并按照上图的方式分发数据到 32 个线程中。这种分发方式刚好对应 mma 需要的布局，所以 mma 可以直接使用计算。
+
+当矩阵 A 的数据时 column-major，也就是 M-major。由于数据在列方向是连续的，所以 ldmatrix 指令需要根据每一列的首地址加载一列中的 128 bits 的元素。
+
+但是按列加载的数据与 mma 需要的分布不同，所以 ldmatrix 还需要打开 trans，将加载后的数据进行转置分布，这样就和 mma 指令需要的 A 矩阵的分布相同了。
+
+__矩阵 B__
+
+矩阵 B 的 shape 是 K×N。当 B 矩阵中的数据时 row-major 时，可以称为 N-major。
+
+此时 ldmatrix 加载矩阵 B 中的每一行的 128 bits 元素，然后再按照转置的方式分发元素，这样就和 mma 指令需要的矩阵 B 的分布相同了。
+
+当矩阵 B 是 column-major，也就是 K-major。此时 ldmatrix 指令加载矩阵 B 中的每一列的 128 bits 元素，分发的结果天然与 mma 指令需要的 B 矩阵的分布相同。
+
+所以总结就是，当矩阵是 K-major 时，不需要转置；是 MN-major 时需要转置。
