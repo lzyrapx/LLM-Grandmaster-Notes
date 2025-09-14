@@ -47,7 +47,8 @@ wgmma.mma_async.sync.aligned.shape.dtype.f16.f16  d, a-desc, b-desc, scale-d, im
 
 `scale-d` 表示是否需要累加器 D，`scale-d` 的取值为 0 或 1，等于 0 时按照 $D = A × B$ 计算，等于 1 时按照 $D = A × B + D$ 计算。
 
-`imm-scale-a`, `imm-scale-b` 表示是否对矩阵 A 和 B 进行取反，取值为 -1 和 1，1 不取反，-1 取反。取反就是 -1 * A。
+`imm-scale-a`, `imm-scale-b` 表示是否对矩阵 A 和 B 进行取反，取值为 -1 和 1，1 不取反，-1 取反。取反就是 -1 × A。
+
 `imm-trans-a`, `imm-trans-b` 表示是否对矩阵 A 和 B 进行转置操作。取值为 0 和 1，0 表示不转置，1 表示转置。
 
 wgmma 支持 fp16，bf16，tf32，e4m3/e5m2，u8/s8 和 b1 等多种数据类型，不同的数据类型有不同的计算形状。
@@ -72,7 +73,7 @@ wgmma 指令可以从寄存器或共享内存中加载数据。从寄存器中�
 
 <div align="center">
     <img src="../assets/ptx/wgmma/wgmma_A.png" width="90%" height="auto" alt="wgmma_a"><br>
-    small>wgmma A</small>
+    <small>wgmma A</small>
 </div>
 <br>
 
@@ -82,11 +83,11 @@ wgmma 指令可以从寄存器或共享内存中加载数据。从寄存器中�
 
 当数据类型是 fp16 时，一个线程包含 N/4 个寄存器，每个寄存器保存 2 个半精度元素。当数据类型是 fp32 时，一个线程包含 N/2 个寄存器，一个寄存器包含一个 fp32 元素。
 
-128 个线程的对应关系如下，可以看到 8 列为一组，需要的寄存器的数量随着 N 的增多而增多。当 N 等于8时，一个 warp 的线程和数据的对应关系也和 mma 指令的 [m16nNk16](./mma.md) 的 D 矩阵类似。
+128 个线程的对应关系如下，可以看到 8 列为一组，需要的寄存器的数量随着 N 的增多而增多。当 N 等于 8 时，一个 warp 的线程和数据的对应关系也和 mma 指令的 [m16nNk16](./mma.md) 的 D 矩阵类似。
 
 <div align="center">
-    <img src="../assets/ptx/wgmma/wgmma_D.png" width="90%" height="auto" alt="wgmma_a"><br>
-    small>wgmma A</small>
+    <img src="../assets/ptx/wgmma/wgmma_D.png" width="90%" height="auto" alt="wgmma_d"><br>
+    <small>wgmma D</small>
 </div>
 <br>
 
@@ -100,7 +101,7 @@ wgmma 从共享内存中加载数据时的计算流程如下：
 
 1. 根据矩阵乘规模选择合适的 swizzle 模式。
 
-2. 通过 swizzle 的 layout 对 shared memory 进行 tiling，并把数据按照 tiling 后的 Layout 保存到 shared memory 中。
+2. 通过 swizzle 的 layout 对 shared memory 进行 tiling，并把数据按照 tiling 后的 layout 保存到 shared memory 中。
 
 3. 选择合适的 wgmma 指令。
 
@@ -112,11 +113,11 @@ wgmma 从共享内存中加载数据时的计算流程如下：
 
 #### Swizzle 模式
 
-访问共享内存时可能出现 bank conflicts，可以通过 swizzle 避免 bank conflicts。所以 wgmma 在加载共享内存的数据时需要使用 swizzle 模式。Bank conflicts 和 swizzle 的详细介绍可以参考这篇文章。
+访问共享内存时可能出现 bank conflicts，可以通过 swizzle 避免 bank conflicts。所以 wgmma 在加载共享内存的数据时需要使用 swizzle 模式。Bank conflicts 和 swizzle 的详细介绍可以参考[这篇](https://zhuanlan.zhihu.com/p/1906737849576953561)文章。
 
-wgmma 支持 4 种 swizzle 模式：__None__，__32B Swizzling Mode__，__64B Swizzling Mode__ 和 __128B Swizzling Mode__。不同的模式对应不同大小的数据布局，称为 “__swizzle layout atom__”。而且根据数据的主序不同，swizzle layout 的布局也不一样。
+wgmma 支持 4 种 swizzle 模式：__None__，__32B Swizzle Mode__，__64B Swizzle Mode__ 和 __128B Swizzle Mode__。不同的模式对应不同大小的数据布局，称为 __swizzle atom layout__。而且根据数据的主序不同，swizzle layout 的布局也不一样。
 
-下面介绍不同 swizzle 模式在不同主序下的 layout atom。因为 swizzle 都是以 __128bit__ 大小为基本单位的，因此为了方便说明，后面 swizzle 模式的图片中的元素都是 __128bit__。
+下面介绍不同 swizzle 模式在不同主序下的 atom layout。因为 swizzle 都是以 __128bit__ 大小为基本单位的，因此为了方便说明，后面 swizzle 模式的图片中的元素都是 __128bit__。
 
 > 矩阵相乘有 MNK 三个维度，如果数据在 MNK 三个方向连续分别被称为 M-major，N-major，K-major，因为 MN 类似，所以一般称为 MN-major。
 
@@ -124,7 +125,7 @@ __None swizzle__
 
 None swizzle 就是不使用 swizzle 的模式。
 
-在 K-major 下，none swizzle 的 Layout atom 是 `(_8,_1):(_1,_1)`，大小为 8 行 1 列。如下所示。
+在 K-major 下，none swizzle 的 atom layout 是 `(8,1):(1,1)`，大小为 8 行 1 列。如下所示。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/none_swizzle_k_128b.png" width="8%" height="auto" alt="swizzle"><br>
@@ -132,7 +133,7 @@ None swizzle 就是不使用 swizzle 的模式。
 </div>
 <br>
 
-在 MN-major 下，none swizzle 的 Layout atom 是 `(_1,_8):(_1,_1)`，大小为 1 行 8 列。如下所示。
+在 MN-major 下，none swizzle 的 Layout atom 是 `(1,8):(1,1)`，大小为 1 行 8 列。如下所示。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/none_swizzle_mn_128b.png" width="35%" height="auto" alt="swizzle"><br>
@@ -158,7 +159,7 @@ __32B swizzle__
 
 32B swizzle mode 下一行有 32 bytes 的数据参与 swizzle。数据布局如下。
 
-在 K-major 下，32B swizzle layout 是 `Sw<1,0,3> o (_8,_2):(_2,_1)`，大小是 8 行 2 列。
+在 K-major 下，32B swizzle layout 是 `Sw<1,0,3> o (8,2):(2,1)`，大小是 8 行 2 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/32B_swizzle_k_128b.png" width="12%" height="auto" alt="swizzle"><br>
@@ -166,7 +167,7 @@ __32B swizzle__
 </div>
 <br>
 
-在 MN-major 下，32B swizzle 的 layout 是 `Sw<1,0,3> o (_2,_8):(_1,_2)`，大小为 2 行 8 列。
+在 MN-major 下，32B swizzle 的 layout 是 `Sw<1,0,3> o (2,8):(1,2)`，大小为 2 行 8 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/32B_swizzle_mn_128b.png" width="35%" height="auto" alt="swizzle"><br>
@@ -174,13 +175,13 @@ __32B swizzle__
 </div>
 <br>
 
-> Sw\<B,M,S\> 是用于描述 swizzle 方式的模板，B 表示一个 swizzle pattern 有 $ 2^B $ 行；M 表示 $ 2^M $ 个元素作为 swizzle 的一个基本元素；S 表示 swizzle pattern 有 $ 2^S $ 列。以 32B swizzle 为例，Sw<1,0,3> 表示 swizzle pattern 有 2 行 8 列，1 个元素就是 swizzle 的基本元素。
+Sw\<B,M,S\> 是用于描述 swizzle 方式的模板，B 表示一个 swizzle pattern 有 $ 2^B $ 行；M 表示 $ 2^M $ 个元素作为 swizzle 的一个基本元素；S 表示 swizzle pattern 有 $ 2^S $ 列。以 32B swizzle 为例，Sw<1,0,3> 表示 swizzle pattern 有 2 行 8 列，1 个元素就是 swizzle 的基本元素。
 
 __64B swizzle__
 
 64B swizzle mode 下一行有 64 bytes 的数据参与 swizzle。数据布局如下。
 
-在 K-major 下，64B swizzle layout 是 `Sw<2,0,3> o (_8,_4):(_4,_1)`，大小是 8 行 4 列。
+在 K-major 下，64B swizzle layout 是 `Sw<2,0,3> o (8,4):(4,1)`，大小是 8 行 4 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/64B_swizzle_k_128b.png" width="20%" height="auto" alt="swizzle"><br>
@@ -188,7 +189,7 @@ __64B swizzle__
 </div>
 <br>
 
-在 MN-major 下，64B swizzle 的 layout 是 `Sw<2,0,3> o (_4,_8):(_1,_4)`，大小为 4 行 8 列。
+在 MN-major 下，64B swizzle 的 layout 是 `Sw<2,0,3> o (4,8):(1,4)`，大小为 4 行 8 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/64B_swizzle_mn_128b.png" width="35%" height="auto" alt="swizzle"><br>
@@ -200,7 +201,7 @@ __128B swizzle__
 
 128B swizzle mode 下一行有 128 bytes 的数据参与 swizzle。数据布局如下。
 
-在 K-major 下，128B swizzle layout 是 `Sw<3,0,3> o (_8,_8):(_8,_1)`，大小是 8 行 8 列。
+在 K-major 下，128B swizzle layout 是 `Sw<3,0,3> o (8,8):(8,1)`，大小是 8 行 8 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/128B_swizzle_k_128b.png" width="35%" height="auto" alt="swizzle"><br>
@@ -208,7 +209,7 @@ __128B swizzle__
 </div>
 <br>
 
-在 MN-major 下，128B swizzle 的 layout 是 `Sw<3,0,3> o (_8,_8):(_1,_8)`，大小为 8 行 8 列。
+在 MN-major 下，128B swizzle 的 layout 是 `Sw<3,0,3> o (8,8):(1,8)`，大小为 8 行 8 列。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/128B_swizzle_mn_128b.png" width="35%" height="auto" alt="swizzle"><br>
@@ -216,7 +217,7 @@ __128B swizzle__
 </div>
 <br>
 
-如果是 half 类型，128B swizzle 在 K-major 下的 layout 为 `Sw<3,3,3> o (_8,_64):(_64,_1)`，如下如所示。
+如果是 half 类型，128B swizzle 在 K-major 下的 layout 为 `Sw<3,3,3> o (8,64):(64,1)`，如下如所示。
 
 <div align="center">
     <img src="../assets/ptx/wgmma/128B_swizzle_k_16b.png" width="auto" height="auto" alt="swizzle"><br>
@@ -490,13 +491,13 @@ union GmmaDesc
 
 __矩阵 A__
 
-当 A 是 K-major 时。因为是none-swizzle。所以此时 swizzle 的基本 layout 是 `(_8,_1):(_1,_1)`。其中，一个元素是 128bit。
+当 A 是 K-major 时。因为是none-swizzle。所以此时 swizzle 的基本 layout 是 `(8,1):(1,1)`。其中，一个元素是 128bit。
 
 假设 A 矩阵在 shared memory 中的大小是 64×16，所以，通过 none swizzle 的 pattern 对 smem A 做 tiling 可以知道，在 M 维度上 64 被分成 8 份，因此 M 方向的 shape 是（8，8），K 方向上是（1，2）。
 
-half：Layout: Sw<0,4,3> o smem_ptr16b o ((_8,8),(_8,2)):((_8,_64),(_1,512))。
+half：Layout: Sw<0,4,3> o smem_ptr16b o ((8,8),(8,2)):((8,64),(1,512))。
 
-128bit：Layout: Sw<0,4,3> o smem_ptr128b o ((_8,8),(_1,2)):((_1,_8),(_1,64))。
+128bit：Layout: Sw<0,4,3> o smem_ptr128b o ((8,8),(1,2)):((1,8),(1,64))。
 
 所以 pattern 在主序方向 LBO = 64，在 stride 方向 SBO = 8。LAYOUT_TYPE = 0，而且 K-major 不需要转置，tnspA = 0。
 
@@ -504,13 +505,13 @@ __矩阵 B__
 
 因为矩阵 B 也需要从共享内存中加载，所以也需要一个描述符。
 
-K-major，none-swizzle 下，所以 swizzle 的基本 layout 是 `(_8,_1):(_1,_1)`。其中，一个元素是 128bit。
+K-major，none-swizzle 下，所以 swizzle 的基本 layout 是 `(8,1):(1,1)`。其中，一个元素是 128bit。
 
 假设 B 矩阵的 smem 大小就是 32×16，所以在 N 方向上 32 被分成 4 份，K 方向大小是 16，等于有 2 个 128bit 元素。因此 tiling 后 layout 分别是：
 
-half：Sw<0,4,3> o smem_ptr16b o ((_8,4),(_8,2)):((_8,_64),(_1,256))。
+half：Sw<0,4,3> o smem_ptr16b o ((8,4),(8,2)):((8,64),(1,256))。
 
-128bit：Sw<0,4,3> o smem_ptr128b o ((_8,4),(_1,2)):((_1,_8),(_1,32))。
+128bit：Sw<0,4,3> o smem_ptr128b o ((8,4),(1,2)):((1,8),(1,32))。
 
 所以 LAYOUT_TYPE = 0，sbo = 8，lbo = 32。而且 K-major 不需要转置，tnspB = 0。
 
@@ -665,13 +666,13 @@ A 个 B 加载完成后，初始化两个描述符。变量按照上面分析的
 
 __矩阵 A__
 
-当 A 是 M-major，64B-swizzle 时。pattern 的 layout 是 `Sw<2,0,3> o _0 o (_4,_8):(_1,_4)`，一个元素 128bit。
+当 A 是 M-major，64B-swizzle 时。pattern 的 layout 是 `Sw<2,0,3> o (4,8):(1,4)`，一个元素 128bit。
 
 使用这个 layout 对 64×16 的 shape 进行 tiling 会得到:
 
-half：Sw<2,4,3> o smem_ptr16b o ((_32,2),(_8,2)):((_1,_256),(_32,512))
+half：Sw<2,4,3> o smem_ptr16b o ((32,2),(8,2)):((1,256),(32,512))
 
-128bit：Sw<2,4,3> o smem_ptr128b o ((_4,2),(_8,2)):((_1,_32),(_4,64))
+128bit：Sw<2,4,3> o smem_ptr128b o ((4,2),(8,2)):((1,32),(4,64))
 
 所以在 M 方向上被 swizzle pattern 分成 2 份，K 方向上被 8 列分成了 2 份。所以这里 LBO = 32，SBO = 64。而且 MN-major 需要转置，tnspA = 1，LAYOUT_TYPE = 2。
 
@@ -679,17 +680,17 @@ __矩阵 B__
 
 因为矩阵 B 也需要从共享内存中加载，所以也需要一个描述符。
 
-当 B 是 N-major，none-swizzle 时，pattern 的 layout 是 `(_1,_8):(_1,_1)`，一个元素 128bit。
+当 B 是 N-major，none-swizzle 时，pattern 的 layout 是 `(1,8):(1,1)`，一个元素 128bit。
 
 使用这个 pattern 对 32×16 进行 tiling 会得到：
 
-half：Sw<0,4,3> o smem_ptr16b o ((_8,4),(_8,2)):((_1,_64),(_8,256))
+half：Sw<0,4,3> o smem_ptr16b o ((8,4),(8,2)):((1,64),(8,256))
 
-128bit：Sw<0,4,3> o smem_ptr128b o ((_1,4),(_8,2)):((_1,_8),(_1,32))
+128bit：Sw<0,4,3> o smem_ptr128b o ((1,4),(8,2)):((1,8),(1,32))
 
 所以在 N 方向上被分成 4 份，K 方向上被 8 列分成了 2 份。这里 LBO = 32，SBO = 8。而且 N-major 需要转置，tnspB = 1。LAYOUT_TYPE = 0。
 
-知道A和B的布局和两者的描述符参数后就可以开始写代码了。
+知道 A 和 B 的布局和两者的描述符参数后就可以开始写代码了。
 
 完整代码参考 [wgmma_ptx](./wgmma_ptx.cu) 实现。
 
@@ -701,25 +702,25 @@ half：Sw<0,4,3> o smem_ptr16b o ((_8,4),(_8,2)):((_1,_64),(_8,256))
 
 __矩阵 A__
 
-当 A 是 M-major，128B-swizzle 时，pattern 的 layout是 `Sw<3,0,3> o _0 o (_8,_8):(_1,_8)`，一个元素 128bit。
+当 A 是 M-major，128B-swizzle 时，pattern 的 layout是 `Sw<3,0,3> o (8,8):(1,8)`，一个元素 128bit。
 
 使用这个 layout 对 64×16 的 shape 进行 tiling 会得到：
 
-half：Sw<3,4,3> o smem_ptr16b o ((_64,1),(_8,2)):((_1,_512),(_64,512))
+half：Sw<3,4,3> o smem_ptr16b o ((64,1),(8,2)):((1,512),(64,512))
 
-128bit：Sw<3,4,3> o smem_ptr128b o ((_8,1),(_8,2)):((_1,_64),(_8,64))
+128bit：Sw<3,4,3> o smem_ptr128b o ((8,1),(8,2)):((1,64),(8,64))
 
 所以在 M 方向上被 swizzle pattern 分成 1 份，所以这里 stride 不起作用，所以 LBO 可以随便设置。SBO = 64。tnspA = 1，LAYOUT_TYPE = 1。
 
 __矩阵 B__
 
-当 B 是 K-major，32B-swizzle 时，pattern 的 layout 是 `Sw<1,0,3> o _0 o (_8,_2):(_2,_1)`，一个元素 128bit。
+当 B 是 K-major，32B-swizzle 时，pattern 的 layout 是 `Sw<1,0,3> o (8,2):(2,1)`，一个元素 128bit。
 
 使用这个 pattern 对 32×16 进行 tiling 会得到：
 
-half：Sw<1,4,3> o smem_ptr16b o ((_8,4),(_16,1)):((_16,_128),(_1,512))
+half：Sw<1,4,3> o smem_ptr16b o ((8,4),(16,1)):((16,128),(1,512))
 
-128bit：Sw<1,4,3> o smem_ptr128b o ((_8,4),(_2,1)):((_2,_16),(_1,64))
+128bit：Sw<1,4,3> o smem_ptr128b o ((8,4),(2,1)):((2,16),(1,64))
 
 所以在 N 方向上被 8 分成 4 份，在 K 方向上包含两个 128bit 的元素。所以 LBO = 1，SBO = 16。tnspB = 0。LAYOUT_TYPE = 3。
 
@@ -733,13 +734,13 @@ half：Sw<1,4,3> o smem_ptr16b o ((_8,4),(_16,1)):((_16,_128),(_1,512))
 
 __矩阵 B__
 
-当 B 是 N-major，64B-swizzle 时，pattern 的 layout 是 `Sw<2,0,3> o _0 o (_4,_8):(_1,_4)`，一个元素 128bit。
+当 B 是 N-major，64B-swizzle 时，pattern 的 layout 是 `Sw<2,0,3> o (4,8):(1,4)`，一个元素 128bit。
 
 使用这个 pattern 对 32×16 进行 tiling 会得到：
 
-half：Sw<2,4,3> o smem_ptr16b o ((_32,1),(_8,2)):((_1,256),(_32,256))
+half：Sw<2,4,3> o smem_ptr16b o ((32,1),(8,2)):((1,256),(32,256))
 
-128bit：Sw<2,4,3> o smem_ptr128b o ((_4,1),(_8,2)):((_1,_32),(_4,32))
+128bit：Sw<2,4,3> o smem_ptr128b o ((4,1),(8,2)):((1,32),(4,32))
 
 所以在 N 方向上被 4 分成 1 份，所以这里 stride 不起作用，LBO 可以随便设置。在 K 方向上包含两个 128bit 的元素。所以 SBO = 32。tnspB = 1。LAYOUT_TYPE = 2。
 
