@@ -88,5 +88,5 @@
   + [x] cp.async
   + [x] ldmatrix
   + [x] mma
-  + [ ] wgmma
+  + [x] wgmma
 
