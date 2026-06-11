@@ -85,7 +85,6 @@ K = 7168
 
 因为 cooperative 的任务划分是让两个 consumer warp 一起处理一个 output tile，但在 M 维度上会做切分。比如 (256, 128, 128) 的 tile 会被拆成两个 (128, 128, 128)，每个 Warp 处理一半的 M 维度，N 和 K 维度保持不变。但实际在硬件上，Warp 内部会进一步拆分为更小的 Warp Tile（比如 64×64×16 和 64×64×32），Warp Tile 内部会进一步做 MMA 原子操作，执行多个 Tensor  Core 粒度的指令。
 
-
 ## 分析 Cooperative 无法 Overlap Epilogue 的原因
 
 猜测，只有在两个 Consumer Warp Group 都完成了 Mainloop 后，才可以安全的发起 Epilogue 操作，这一定需要同步两个 Consumer Warp Group。然后这里的同步操作，会导致 Epilogue 无法被 Overlap。
