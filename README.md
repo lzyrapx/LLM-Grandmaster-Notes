@@ -6,7 +6,7 @@
   + [ ] transformer
   + [x] vit transformer
   + [x] lm head
-  + [ ] kv cache
+  + [x] kv cache
 - attention
   + [x] self attention
   + [x] online attention
