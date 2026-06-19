@@ -3,10 +3,15 @@
 📚The path to LLM mastery is paved with broken embeddings and resurrected gradients.
 
 - base
-  + [ ] transformer
+  + [x] transformer
   + [x] vit transformer
   + [x] lm head
   + [x] kv cache
+  - GPU Architecture
+    + [ ] SM80
+    + [ ] SM90
+    + [ ] SM100
+    + [ ] SM120
 - attention
   + [x] self attention
   + [x] online attention
