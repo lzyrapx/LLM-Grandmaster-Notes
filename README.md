@@ -23,7 +23,7 @@
   + [x] scaled dot-product attention (SDPA)
   + [x] multi-head self-attention (MHSA)
   + [x] multi-head attention (MHA)
-  + [ ] grouped-query attention (GQA)
+  + [x] grouped-query attention (GQA)
   + [ ] multi-query attention (MQA)
   + [ ] multi-head latent attention (MLA)
   + [ ] multi-token attention (MTA)
