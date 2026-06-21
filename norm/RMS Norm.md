@@ -95,6 +95,8 @@ __global__ void rmsnorm_kernel(float* out, const float* x, const float* gamma,
         float val = x[row * d + i];
         sum_sq += val * val;
     }
+    // block_reduce_sum 可以基于 Warp Shuffle + 共享内存自己实现
+    // 或者使用 cub 库（生产环境）
     sum_sq = block_reduce_sum(sum_sq);
     float rms = sqrtf(sum_sq / d + eps);
 

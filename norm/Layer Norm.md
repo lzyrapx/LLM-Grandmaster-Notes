@@ -114,6 +114,8 @@ __global__ void layernorm_kernel(float* out, const float* x, const float* gamma,
     for (int i = tid; i < d; i += blockDim.x) {
         sum += x[row * d + i];
     }
+    // block_reduce_sum 可以基于 Warp Shuffle + 共享内存自己实现
+    // 或者使用 cub 库（生产环境）
     sum = block_reduce_sum(sum);
     float mean = sum / d;
 
@@ -123,6 +125,8 @@ __global__ void layernorm_kernel(float* out, const float* x, const float* gamma,
         float diff = x[row * d + i] - mean;
         sum_sq_diff += diff * diff;
     }
+     // block_reduce_sum 可以基于 Warp Shuffle + 共享内存自己实现
+    // 或者使用 cub 库（生产环境）
     sum_sq_diff = block_reduce_sum(sum_sq_diff);
     float std = sqrtf(sum_sq_diff / d + eps);
 
