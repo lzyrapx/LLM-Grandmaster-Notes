@@ -50,9 +50,9 @@
   + [ ] window
   + [ ] share
 - norm
-  + [ ] Layer Norm
-  + [ ] RMS Norm
-  + [ ] Batch Norm
+  + [x] Batch Norm
+  + [x] Layer Norm
+  + [x] RMS Norm
 - position embedding
   + [ ] RoPE
   + [ ] AliBi
