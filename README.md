@@ -24,7 +24,7 @@
   + [x] multi-head self-attention (MHSA)
   + [x] multi-head attention (MHA)
   + [x] grouped-query attention (GQA)
-  + [ ] multi-query attention (MQA)
+  + [x] multi-query attention (MQA)
   + [ ] multi-head latent attention (MLA)
   + [ ] multi-token attention (MTA)
   + [x] sage attention 1
