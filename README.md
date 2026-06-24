@@ -46,7 +46,7 @@
 - kv cache optimization
   + [ ] sparse
   + [ ] quantization
-  + [ ] allocator
+  + [x] allocator
   + [ ] window
   + [ ] share
 - norm
