@@ -48,7 +48,7 @@
   + [ ] quantization
   + [x] allocator
   + [ ] window
-  + [ ] share
+  + [x] share
 - norm
   + [x] Batch Norm
   + [x] Layer Norm
