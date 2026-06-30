@@ -55,7 +55,7 @@
   + [x] RMS Norm
 - position embedding
   + [ ] RoPE
-  + [ ] AliBi
+  + [x] AliBi
   + [ ] 2D RoPE
   + [ ] 3D RoPE
   + [ ] NTK-Award RoPE
