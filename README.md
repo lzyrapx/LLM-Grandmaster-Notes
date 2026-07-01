@@ -45,9 +45,9 @@
   + [x] online softmax
 - kv cache optimization
   + [ ] sparse
-  + [ ] quantization
+  + [x] quantization
   + [x] allocator
-  + [ ] window
+  + [x] window
   + [x] share
 - norm
   + [x] Batch Norm
