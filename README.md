@@ -44,7 +44,7 @@
   + [x] safe softmax
   + [x] online softmax
 - kv cache optimization
-  + [ ] sparse
+  + [x] sparse
   + [x] quantization
   + [x] allocator
   + [x] window
