@@ -65,17 +65,18 @@
   + [ ] AWQ
   + [ ] KIVI
   + [ ] GPTQ
-- design
-  + [ ] chunked prefill
-  + [ ] continous batching
-  + [ ] speculative decoding
+- speculative decoding
     + [ ] Medusa
     + [ ] Lookahead decoding
     + [ ] NGram
     + [ ] OSD
     + [ ] Eagle 1,2,3
+    + [ ] multi-token prediction (MTP)
+    + [ ] Dflash
+- design
+  + [ ] chunked prefill
+  + [ ] continous batching
   + [ ] sliding window
-  + [ ] multi-token prediction (MTP)
 - reinforcement learning
   + [ ] PPO
   + [ ] GRPO
