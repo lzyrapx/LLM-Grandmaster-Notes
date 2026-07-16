@@ -37,7 +37,7 @@
   + [x] sage attention 2
   + [x] sage attention 2++
   + [x] sage attention 3
-  + [ ] paged attention
+  + [x] paged attention
   + [ ] ring attention
   + [ ] ring flash attention
   + [ ] linear attention
